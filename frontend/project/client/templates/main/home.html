@@ -1,0 +1,38 @@
+{% extends "_base.html" %}
+
+{% block content %}
+
+<div class="starter-template">
+  <h1>HOME</h1>
+  Hello world!
+  debug: {{ debug }}
+  <br>
+  <button type="button" class="btn btn-primary" data-type="1">Run 10 second task</button>
+  <br>
+  <button type="button" class="checkQueue btn-primary" data-type="1">Check queue</button>
+  <br>
+  <button type="button" class="getAllQueues btn-primary" data-type="1">Get all tasks</button>
+  <br>
+  <button type="button" class="getmetas btn-primary" data-type="1">Watch tasks</button>
+</div>
+
+<div>
+	<h3>Task Status</h3>
+	<div id="status"></div>
+	<br>
+	<table style="width:100%">
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>Handler</th>
+				<th>Progress</th>
+				<th>Status</th>
+				<th>Result</th>
+			</tr>
+		</thead>
+		<tbody id="tasks">
+		</tbody>
+	</table>
+</div>
+
+{% endblock %}

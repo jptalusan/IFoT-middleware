@@ -1,0 +1,77 @@
+#docker-compose.yml
+version: '3'
+
+services:
+  frontend:
+    image: raspberrypi3-05:5000/frontend-ifot
+    #image: ifot/frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    command: python manage.py run -h 0.0.0.0 -p 5001
+    volumes:
+      - ./frontend:/usr/src/app
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+    environment:
+      - FLASK_DEBUG=1
+      - APP_SETTINGS=project.server.config.DevelopmentConfig
+    depends_on:
+      - redis
+
+  #Backend simply just running redis rq worker
+  #needs task files to be deployed in all workers
+  backend:
+    image: raspberrypi3-05:5000/worker-ifot
+    #image: ifot/backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5002:5002"
+    #command: rq worker -u redis://redis:6379
+    command: python3 worker.py
+    volumes:
+      - ./backend:/usr/src/app
+    depends_on:
+      - redis
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker
+      mode: replicated
+      replicas: 3
+
+  redis:
+    image: raspberrypi3-05:5000/redis:4.0.10
+    ports:
+      - "6379:6379"
+
+  redis_dashboard:
+    build: ./redis_dashboard
+    #image: ifot/r_dashboard
+    image: raspberrypi3-05:5000/dashboard-ifot
+    container_name: redis_dashboard
+    ports:
+      - "9181:9181"
+    command: rq-dashboard -H redis
+
+  viz:
+    image: alexellis2/visualizer-arm:latest
+    ports:
+      - "8080:8080"
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+networks:
+  bridge:
+    external:
+      name: mynet

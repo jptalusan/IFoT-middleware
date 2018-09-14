@@ -1,0 +1,15 @@
+#For flask
+flask
+flask-bootstrap
+flask-script
+flask-wtf
+
+#For redis queue
+redis
+rq
+
+#For database
+flask-sqlalchemy
+flask-migrate
+
+requests
