@@ -36,7 +36,9 @@ def create_app(script_info=None):
 
     # register blueprints
     from project.server.main.views import main_blueprint
+    from project.server.api.views import api
     app.register_blueprint(main_blueprint)
+    app.register_blueprint(api, url_prefix='/api')
 
     # shell context for flask cli
     app.shell_context_processor({'app': app})

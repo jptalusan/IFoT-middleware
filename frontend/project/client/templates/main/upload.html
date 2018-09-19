@@ -24,7 +24,13 @@
           </tr>
         {% endfor %}
       </table>
-      <p><input type="submit" value="upload"></p>
+      <div class="panel-body">
+          <input type ="submit" name="action" value="Single">
+      </div>
+      <div class="panel-body">
+          <input type ="submit" name="action" value="Distributed">
+      </div>
+      
     </form>
     {% if result != None %}
       <h2>Results:</h2>

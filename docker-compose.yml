@@ -1,6 +1,13 @@
 #docker-compose.yml
 version: '3'
 
+#Note: Not sure if I need to change
+#something with the image/build
+#Dockerfile contains online docker image, but image in docker-compose
+#is named as the local registry docker image. If they are both named
+#as local registry docker image, i think i encounter some problem
+#regarding allocation? Or is it because i failed to use build/context, dockerfile params.
+
 services:
   frontend:
     image: raspberrypi3-05:5000/frontend-ifot
