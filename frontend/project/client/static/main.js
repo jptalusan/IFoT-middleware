@@ -22,7 +22,7 @@ $('.btn').on('click', function() {
 $('.checkQueue').on('click', function() {
   console.log('checking queue default');
   $.ajax({
-    url: '/checkqueue',
+    url: '/api/checkqueue',
     data: { queue: 'queue' },
     method: 'POST'
   })
@@ -38,7 +38,7 @@ $('.checkQueue').on('click', function() {
 
 $('.getAllQueues').on('click', function() {
   $.ajax({
-    url: '/getallqueues',
+    url: '/api/getallqueues',
     method: 'POST'
   })
   .done((res) => {
@@ -83,7 +83,7 @@ function checkIfShouldQuery(res) {
 
 function getTaskStatus() {
   $.ajax({
-    url: '/getmetas',
+    url: '/api/getmetas',
     method: 'POST'
   })
   .done((res) => {
@@ -100,7 +100,8 @@ function getTaskStatus() {
     for (var i = 0; i < rtask_length; ++i) {
       var t = Object.keys(rtask[i])[0];
       html += '<tr bgcolor="#337CFF">';
-      html +=  `<td>${t.substring(0,8)}</td>
+      html +=  `<td>${rtask[i][t].handled_time}</td>
+                <td>${t.substring(0,8)}</td>
                 <td>${rtask[i][t].handled_by}</td>
                 <td>${rtask[i][t].progress}</td>
                 <td>Running</td>
@@ -112,7 +113,8 @@ function getTaskStatus() {
     for (var i = 0; i < qtask_length; ++i) {
       var t = Object.keys(qtask[i])[0];
       html += '<tr bgcolor="#E4FF33">';
-      html +=  `<td>${t.substring(0,8)}</td>
+      html +=  `<td>${qtask[i][t].handled_time}</td>
+                <td>${t.substring(0,8)}</td>
                 <td>${qtask[i][t].handled_by}</td>
                 <td>${qtask[i][t].progress}</td>
                 <td>Queued</td>
@@ -124,11 +126,12 @@ function getTaskStatus() {
     for (var i = 0; i < ftask_length; i++) {
       var t = Object.keys(ftask[i])[0];
       html += '<tr bgcolor="#33FF55">';
-      html +=  `<td>${t.substring(0,8)}</td>
+      html +=  `<td>${ftask[i][t].handled_time}</td>
+                <td>${t.substring(0,8)}</td>
                 <td>${ftask[i][t].handled_by}</td>
                 <td>${ftask[i][t].progress}</td>
                 <td>Finished</td>
-                <td><a href="/task/${t}">Link</a></td>`;
+                <td><a href="/api/task/${t}">Link</a></td>`;
       html += '</tr>';
     }
 
@@ -158,7 +161,7 @@ function getTaskStatus() {
 //i can add the get metas here?
 $('.getmetas').on('click', function() {
   $.ajax({
-    url: '/getmetas',
+    url: '/api/getmetas',
     method: 'POST'
   })
   .done((res) => {
