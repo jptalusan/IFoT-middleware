@@ -13,9 +13,51 @@ from io import StringIO
 import time
 import datetime
 from dateutil import tz
+import redis
+from rq import Queue, Connection
+
+NODE_COUNT = '_node_count'
+DONE_NODE_COUNT = '_done_node_count'
+
+REDIS_URL = 'redis://redis:6379/0'
+QUEUES = ['default']
+
+redis_connection = redis.from_url(REDIS_URL)
 
 #this might be slower, and i should probably put the tasks inside the worker.py
 #or can I just preload the libraries there?
+
+#Move these redis api to some other file
+def delRedisFromAllKeys(r, K):
+  try:
+    for key in K:
+      r.delete(K)
+  except:
+    return false
+
+def setRedisKV(r, K, V):
+  try:
+    # r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+    r.set(K, V)
+    return True
+  except:
+    return False
+
+def incrRedisKV(r, K):
+  try:
+    # r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+    r.incr(K)
+    return True
+  except:
+    return False
+
+def getRedisV(r, K):
+  # r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+  output = r.get(K)
+  if output is not None:
+    return output
+  else:
+    return "Empty"
 
 def get_current_time():
   HERE = tz.gettz('Asia/Tokyo')
@@ -26,7 +68,7 @@ def get_current_time():
   local_time = ts.strftime('%Y-%m-%d %H:%M:%S %Z')
   return local_time
 
-def create_task(task_type):
+def create_task(task_type, unique_ID):
   job = get_current_job()
   timer = int(task_type) * 10
   job.meta['handled_by'] = socket.gethostname()
@@ -38,8 +80,7 @@ def create_task(task_type):
     time.sleep(1)
   job.meta['progress'] = 100.0
   job.save_meta()
-  d = '123123134131234  erawdadadafaqerq23131e3'
-  return d
+  return {'result':unique_ID}
 
 def classify_iris(input_data):
   tic = time.clock()

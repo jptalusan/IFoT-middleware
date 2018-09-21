@@ -12,17 +12,9 @@ from rq.registry import StartedJobRegistry, FinishedJobRegistry
 import urllib.request, json 
 import requests
 import csv
-import multiprocessing
-import tempfile
-
+from . import funcs
 
 main_blueprint = Blueprint('main', __name__,)
-
-ALLOWED_EXTENSIONS = set(['txt', 'csv', 'jpg'])
-
-def allowed_file(filename):
-  return '.' in filename and \
-          filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @main_blueprint.route('/', methods=['GET'])
 def home():
@@ -35,7 +27,7 @@ def upload():
   form = UploadForm()
   if form.validate_on_submit():
     file = form.file.data
-    if file and allowed_file(file.filename):
+    if file and funcs.allowed_file(file.filename):
       filename = secure_filename(file.filename)
       os.makedirs(os.path.join(current_app.instance_path, 'htmlfi'), exist_ok=True)
       file.save(os.path.join(current_app.instance_path, 'htmlfi', filename))
@@ -55,7 +47,7 @@ def iris_classifier():
   if request.method == 'POST':
     if form.validate_on_submit():
       file = form.file.data
-      if file and allowed_file(file.filename):
+      if file and funcs.allowed_file(file.filename):
         filename = secure_filename(file.filename)
         os.makedirs(os.path.join(current_app.instance_path, 'htmlfi'), exist_ok=True)
         file.save(os.path.join(current_app.instance_path, 'htmlfi', filename))
@@ -71,26 +63,6 @@ def iris_classifier():
   elif request.method == 'GET':
       return render_template('main/upload.html', form=form, result=None)
 
-#If you read the files, it will be in bytes
-def split(infilename, num_chunks=multiprocessing.cpu_count()):
-    READ_BUFFER = 2**13
-    in_file_size = os.path.getsize(os.path.join(current_app.instance_path, 'htmlfi', infilename))
-    print('in_file_size:', in_file_size)
-    chunk_size = in_file_size // num_chunks
-    print('target chunk_size:', chunk_size)
-    files = []
-    with open(os.path.join(current_app.instance_path, 'htmlfi', infilename), 'rb', READ_BUFFER) as infile:
-      for _ in range(num_chunks):
-        temp_file = tempfile.TemporaryFile()
-        while temp_file.tell() < chunk_size:
-          try:
-            temp_file.write(infile.readline())
-          except StopIteration:  # end of infile
-            break
-        temp_file.seek(0)  # rewind
-        files.append(temp_file)
-    return files
-
 #Dist
 @main_blueprint.route('/iris_dist_process', methods=['GET', 'POST'])
 def start_iris_dist_process():
@@ -101,12 +73,12 @@ def start_iris_dist_process():
   redis_conn = redis.from_url(current_app.config['REDIS_URL'])
   print(filename)
   try:
-    if filename and allowed_file(filename):
+    if filename and funcs.allowed_file(filename):
       with open(os.path.join(current_app.instance_path, 'htmlfi', filename)) as f:
         q = Queue(connection = redis_conn)
         nodes = 3
         #Split file into 3
-        files = split(filename, 3)
+        files = funcs.split(filename, 3)
 
         for file in files:
           data = file.read()
@@ -124,7 +96,7 @@ def start_iris_process():
   redis_conn = redis.from_url(current_app.config['REDIS_URL'])
   print(filename)
   try:
-    if filename and allowed_file(filename):
+    if filename and funcs.allowed_file(filename):
       with open(os.path.join(current_app.instance_path, 'htmlfi', filename)) as f:
         data = f.read()
         q = Queue(connection = redis_conn)
@@ -144,9 +116,10 @@ def run_task():
   task_type = request.form['type']
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
     q = Queue()
-    task = q.enqueue('tasks.create_task', task_type)
+    task = q.enqueue('tasks.create_task', task_type, 'TEST YEHEY!')
   response_object = {
       'status': 'success',
+      'unique_ID': 'TEST',
       'data': {
         'task_id': task.get_id()
     }

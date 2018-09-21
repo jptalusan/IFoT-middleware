@@ -162,3 +162,46 @@ def getmetas():
     data['finished_tasks'].append(d)
 
   return jsonify(data)
+
+@api.route('/set_redis', methods=['GET','POST'])
+def set_redis():
+  try:
+    r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+    r.set("msg:hello", "Hello Redis!!!")
+    print(r.get("msg:hello"))
+    return "Redis inserted"
+  except Exception as e:
+    print(e)
+
+@api.route('/check_redis/<key>', methods=['GET','POST'])
+def check_redis(key):
+  r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+  status = r.get(key)
+  node_count = r.get(key + NODE_COUNT)
+  done_node_count = r.get(key + DONE_NODE_COUNT)
+
+  d = {'status': status, 'node_count': node_count, 'done_node_count': done_node_count}
+  if status is not None:
+    return jsonify(d)
+  else:
+    return "Empty"
+
+@api.route('/get_redis', methods=['GET','POST'])
+def get_redis():
+  r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+  output = r.get("msg:hello")
+  if output is not None:
+    return output
+  else:
+    return "Empty"
+
+@api.route('/flush_redis', methods=['GET','POST'])
+def flush_redis():
+  try:
+    r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+    r.set("msg:hello", "Hello Redis!!!")
+    output = r.flushall()
+    return "Flushed"
+  except Exception as e:
+    print(e)
+    return e

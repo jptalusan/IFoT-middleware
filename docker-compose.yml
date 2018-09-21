@@ -53,6 +53,20 @@ services:
       mode: replicated
       replicas: 3
 
+  aggregator:
+    image: raspberrypi3-05:5000/worker-ifot
+    ports:
+      - "5003:5003"
+    command: python3 worker.py
+    volumes:
+      - ./aggregator:/usr/src/app
+    depends_on:
+      - redis
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
   redis:
     image: raspberrypi3-05:5000/redis:4.0.10
     ports:

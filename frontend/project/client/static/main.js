@@ -11,8 +11,54 @@ $('.btn').on('click', function() {
     data: { type: $(this).data('type') },
     method: 'POST'
   })
-  .done((res) => {
+  .done((res) => {    
+    console.log(res.unique_ID);
     console.log(res.data.task_id);
+  })
+  .fail((err) => {
+    console.log(err);
+  });
+});
+
+$('.get_redis').on('click', function() {
+  console.log('button clicked!');
+  $.ajax({
+    url: '/api/get_redis',
+    data: { type: $(this).data('type') },
+    method: 'POST'
+  })
+  .done((res) => {
+    console.log(res);
+  })
+  .fail((err) => {
+    console.log(err);
+  });
+});
+
+$('.flush_redis').on('click', function() {
+  console.log('button clicked!');
+  $.ajax({
+    url: '/api/flush_redis',
+    data: { type: $(this).data('type') },
+    method: 'POST'
+  })
+  .done((res) => {
+    // console.log(res.data.task_id);
+  })
+  .fail((err) => {
+    console.log(err);
+  });
+});
+
+$('.test_redis').on('click', function() {
+  console.log('button clicked!');
+  $.ajax({
+    url: '/api/set_redis',
+    data: { type: $(this).data('type') },
+    method: 'POST'
+  })
+  .done((res) => {
+    // console.log(res.data.task_id);
   })
   .fail((err) => {
     console.log(err);

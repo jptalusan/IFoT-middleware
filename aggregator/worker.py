@@ -16,7 +16,7 @@ import datetime
 from dateutil import tz
 
 REDIS_URL = 'redis://redis:6379/0'
-QUEUES = ['default']
+QUEUES = ['aggregator']
 
 
 redis_connection = redis.from_url(REDIS_URL) 
