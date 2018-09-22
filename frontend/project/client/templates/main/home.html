@@ -22,6 +22,20 @@
   <button type="button" class="flush_redis btn-primary" data-type="1">Flush Redis</button>
 </div>
 
+<div class='my-legend'>
+<div class='legend-title'>Task Color Legend *Default = Processor</div>
+<div class='legend-scale'>
+  <ul class='legend-labels'>
+    <li><span style='background:#337CFF;'></span>Running default task</li>
+    <li><span style='background:#E4FF33;'></span>Queued default task</li>
+    <li><span style='background:#33FF55;'></span>Finished default task</li>
+    <li><span style='background:#69E0D3;'></span>Finished aggregator task</li>
+    <li><span style='background:#80B1D3;'></span>etc</li>
+  </ul>
+</div>
+<div class='legend-source'>Source: <a href="#link to source">Name of source</a></div>
+</div>
+
 <div>
 	<h3>Task Status</h3>
 	<div id="status"></div>

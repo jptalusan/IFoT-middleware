@@ -14,6 +14,11 @@ import requests
 import csv
 from . import funcs
 
+#Move to constants file.
+NODE_COUNT = '_node_count'
+DONE_NODE_COUNT = '_done_node_count'
+NODES = '_nodes'
+
 main_blueprint = Blueprint('main', __name__,)
 
 @main_blueprint.route('/', methods=['GET'])
@@ -74,15 +79,22 @@ def start_iris_dist_process():
   print(filename)
   try:
     if filename and funcs.allowed_file(filename):
+      u_ID = funcs.generate_unique_ID()
       with open(os.path.join(current_app.instance_path, 'htmlfi', filename)) as f:
         q = Queue(connection = redis_conn)
         nodes = 3
         #Split file into 3
         files = funcs.split(filename, 3)
+        
+        funcs.setRedisKV(redis_conn, u_ID, 'ongoing')
+        funcs.setRedisKV(redis_conn, u_ID + NODE_COUNT, nodes)
+        funcs.setRedisKV(redis_conn, u_ID + DONE_NODE_COUNT, 0)
 
         for file in files:
           data = file.read()
-          q.enqueue('tasks.classify_iris_dist', data, nodes)
+          #Need to decode?
+          #Race condition i think.
+          task = q.enqueue('tasks.classify_iris_dist', data, nodes, u_ID)
 
       return 'Classifying Distributedly...'
   except IOError:
@@ -114,12 +126,19 @@ def uploaded_file(filename):
 def run_task():
   print(dir())
   task_type = request.form['type']
+  r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+
+  u_ID = funcs.generate_unique_ID()
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
     q = Queue()
-    task = q.enqueue('tasks.create_task', task_type, 'TEST YEHEY!')
+    funcs.setRedisKV(r, u_ID, 'ongoing')
+    funcs.setRedisKV(r, u_ID + NODE_COUNT, 1)
+    funcs.setRedisKV(r, u_ID + DONE_NODE_COUNT, 0)
+
+    task = q.enqueue('tasks.create_task', task_type, u_ID)
   response_object = {
       'status': 'success',
-      'unique_ID': 'TEST',
+      'unique_ID': u_ID,
       'data': {
         'task_id': task.get_id()
     }

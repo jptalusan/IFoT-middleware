@@ -11,11 +11,68 @@ from rq.registry import StartedJobRegistry, FinishedJobRegistry
 import urllib.request, json 
 import requests
 
+NODE_COUNT = '_node_count'
+DONE_NODE_COUNT = '_done_node_count'
+
+
 api = Blueprint('api', __name__,)
 
 @api.route('/', methods=['GET'])
 def home():
   return "{'hello':'world'}"
+
+def get_all_finished_tasks_from(queue_name):
+    with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+      # q = Queue(queue_name)
+      f_registry = FinishedJobRegistry(queue_name)
+      data = {}
+
+      finished_job_ids = f_registry.get_job_ids()
+      data['status'] = 'success'
+      data['queue_name'] = queue_name
+      data['finished'] = {}
+
+      data['finished']['count'] = len(finished_job_ids)
+      data['finished']['finished_tasks_ids'] = []
+      for finished_job_id in finished_job_ids:
+        data['finished']['finished_tasks_ids'].append(finished_job_id)
+
+      return jsonify(data)
+
+def get_all_queued_tasks_from(queue_name):
+    with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+      q = Queue(queue_name)
+      queued_job_ids = q.job_ids
+      data = {}
+
+      data['status'] = 'success'
+      data['queue_name'] = queue_name
+      data['queued'] = {}
+
+      data['queued']['count'] = len(queued_job_ids)
+      data['queued']['queued_tasks_ids'] = []
+      for queued_job_id in queued_job_ids:
+        data['queued']['queued_tasks_ids'].append(queued_job_id)
+
+      return jsonify(data)
+
+def get_all_running_tasks_from(queue_name):
+    with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+      # q = Queue(queue_name)
+      registry = StartedJobRegistry(queue_name)
+      data = {}
+
+      running_job_ids = registry.get_job_ids()
+      data['status'] = 'success'
+      data['queue_name'] = queue_name
+      data['running'] = {}
+
+      data['running']['count'] = len(running_job_ids)
+      data['running']['running_tasks_ids'] = []
+      for running_job_id in running_job_ids:
+        data['running']['running_tasks_ids'].append(running_job_id)
+
+      return jsonify(data)
 
 def getalltasksID():
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
@@ -63,11 +120,11 @@ def getalltasksID():
 def getallqeueues():
     return getalltasksID()
 
-def get_task_status(task_id):
+def get_task_status(queue, task_id):
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
-    q = Queue()
+    q = Queue(queue)
     task = q.fetch_job(task_id)
-  if task:
+  if task is not None:
     response_object = {
       'status': 'success',
       'data': {
@@ -78,7 +135,7 @@ def get_task_status(task_id):
       }
     }
   else:
-    response_object = {'status': 'error'}
+    response_object = {'status': 'error, task is None'}
   return jsonify(response_object)
 
 @api.route('/getqueuecount', methods=['POST'])
@@ -111,9 +168,11 @@ def checkqueue():
   else:
     return jsonify({'status': 'error'})
 
-@api.route('/task/<task_id>', methods=['GET','POST'])
-def get_status(task_id):
-  return get_task_status(task_id)
+#https://stackoverflow.com/questions/15182696/multiple-parameters-in-in-flask-approute
+
+@api.route('/task/<queue>/<task_id>', methods=['GET','POST'])
+def get_status(queue = None, task_id = None):
+  return get_task_status(queue, task_id)
 
 @api.route('/getmetas', methods=['GET', 'POST'])
 def getmetas():
@@ -122,44 +181,89 @@ def getmetas():
     registry = StartedJobRegistry('default')
     f_registry = FinishedJobRegistry('default')
 
-  all_task_ids = getalltasksID()
-  # if request.method == 'GET':
-  response_text = all_task_ids.get_data(as_text=True)
+    all_task_ids = getalltasksID()
+    # if request.method == 'GET':
+    response_text = all_task_ids.get_data(as_text=True)
 
-  response_json = all_task_ids.get_json()
-  # data = json.load(response_json)
-  running_tasks_ids = response_json["running"]["running_tasks_ids"]
-  finished_tasks_ids = response_json["finished"]["finished_tasks_ids"]
-  queued_tasks_ids = response_json["queued"]["queued_tasks_ids"]
+    response_json = all_task_ids.get_json()
+    # data = json.load(response_json)
+    running_tasks_ids = response_json["running"]["running_tasks_ids"]
+    finished_tasks_ids = response_json["finished"]["finished_tasks_ids"]
+    queued_tasks_ids = response_json["queued"]["queued_tasks_ids"]
 
-  data = {}
-  
-  data['running_tasks'] = []
-  for task_id in running_tasks_ids:
-    d = {}
-    job = q.fetch_job(task_id)
-    job.refresh()
-    job.meta['result'] = 'null'
-    d[task_id] = job.meta
-    data['running_tasks'].append(d)
+    data = {}
+    
+    data['running_tasks'] = []
+    for task_id in running_tasks_ids:
+      d = {}
+      job = q.fetch_job(task_id)
+      job.refresh()
+      job.meta['result'] = 'null'
+      d[task_id] = job.meta
+      data['running_tasks'].append(d)
 
-  data['queued_tasks'] = []
-  for task_id in queued_tasks_ids:
-    d = {}
-    job = q.fetch_job(task_id)
-    job.refresh()
-    job.meta['result'] = 'null'
-    d[task_id] = job.meta
-    data['queued_tasks'].append(d)
+    data['queued_tasks'] = []
+    for task_id in queued_tasks_ids:
+      d = {}
+      job = q.fetch_job(task_id)
+      job.refresh()
+      job.meta['result'] = 'null'
+      d[task_id] = job.meta
+      data['queued_tasks'].append(d)
 
-  data['finished_tasks'] = []
-  for task_id in finished_tasks_ids:
-    d = {}
-    job = q.fetch_job(task_id)
-    job.refresh()
-    job.meta['result'] = job.result
-    d[task_id] = job.meta
-    data['finished_tasks'].append(d)
+    data['finished_tasks'] = []
+    for task_id in finished_tasks_ids:
+      d = {}
+      job = q.fetch_job(task_id)
+      job.refresh()
+      job.meta['result'] = job.result
+      d[task_id] = job.meta
+      data['finished_tasks'].append(d)
+
+  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+    q = Queue('aggregator')
+
+    agg_fin_task_ids = get_all_finished_tasks_from('aggregator')
+    temp = agg_fin_task_ids.get_json()
+    agg_fin_tasks_ids = temp["finished"]["finished_tasks_ids"]
+
+    agg_que_task_ids = get_all_queued_tasks_from('aggregator')
+    temp = agg_que_task_ids.get_json()
+    agg_que_tasks_ids = temp["queued"]["queued_tasks_ids"]
+
+    agg_run_task_ids = get_all_running_tasks_from('aggregator')
+    temp = agg_run_task_ids.get_json()
+    agg_run_tasks_ids = temp["running"]["running_tasks_ids"]
+
+    data['agg_finished_tasks'] = []
+    for task_id in agg_fin_tasks_ids:
+      d = {}
+      job = q.fetch_job(task_id)
+      if job is not None:
+        job.refresh()
+        job.meta['result'] = job.result
+        d[task_id] = job.meta
+        data['agg_finished_tasks'].append(d)
+
+    data['agg_queued_tasks'] = []
+    for task_id in agg_que_tasks_ids:
+      d = {}
+      job = q.fetch_job(task_id)
+      if job is not None:
+        job.refresh()
+        job.meta['result'] = job.result
+        d[task_id] = job.meta
+        data['agg_queued_tasks'].append(d)
+
+    data['agg_running_tasks'] = []
+    for task_id in agg_run_tasks_ids:
+      d = {}
+      job = q.fetch_job(task_id)
+      if job is not None:
+        job.refresh()
+        job.meta['result'] = job.result
+        d[task_id] = job.meta
+        data['agg_running_tasks'].append(d)
 
   return jsonify(data)
 
@@ -180,7 +284,7 @@ def check_redis(key):
   node_count = r.get(key + NODE_COUNT)
   done_node_count = r.get(key + DONE_NODE_COUNT)
 
-  d = {'status': status, 'node_count': node_count, 'done_node_count': done_node_count}
+  d = {'id': key, 'status': status, 'node_count': node_count, 'done_node_count': done_node_count}
   if status is not None:
     return jsonify(d)
   else:

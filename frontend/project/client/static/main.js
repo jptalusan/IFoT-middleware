@@ -116,17 +116,22 @@ function checkIfShouldQuery(res) {
   var qtask_length = Object.keys(qtask).length;
   var ftask = res.finished_tasks;
   var ftask_length = Object.keys(ftask).length;
+
+  var artask = res.agg_running_tasks;
+  var artask_length = Object.keys(artask).length;
+
   console.log(rtask_length, qtask_length, ftask_length);
-  if (rtask_length + qtask_length + ftask_length == 0) {
+  if (rtask_length + qtask_length + artask_length == 0) {
     $('#status').html('No tasks running, queued or finished...');
     return false;
-  } else if (rtask_length + qtask_length == 0) {
+  } else if (rtask_length + qtask_length + artask_length == 0) {
     return false;
   } else {
     return true;
   }
 }
 
+//probably race condition? i dont know how fast the queries are done but this loops every second
 function getTaskStatus() {
   $.ajax({
     url: '/api/getmetas',
@@ -141,6 +146,27 @@ function getTaskStatus() {
     var qtask_length = Object.keys(qtask).length;
     var ftask = res.finished_tasks;
     var ftask_length = Object.keys(ftask).length;
+
+    var aftask = res.agg_finished_tasks;
+    var aftask_length = Object.keys(aftask).length;
+
+    if (aftask_length > 0) {
+      console.log('Agg task fin len', aftask_length);
+    }
+
+    var aqtask = res.agg_queued_tasks;
+    var aqtask_length = Object.keys(aqtask).length;
+
+    if (aqtask_length > 0) {
+      console.log('Agg task fin len', aqtask_length);
+    }
+
+    var artask = res.agg_running_tasks;
+    var artask_length = Object.keys(artask).length;
+
+    if (artask_length > 0) {
+      console.log('Agg task fin len', artask_length);
+    }
 
     //Running tasks
     for (var i = 0; i < rtask_length; ++i) {
@@ -177,7 +203,20 @@ function getTaskStatus() {
                 <td>${ftask[i][t].handled_by}</td>
                 <td>${ftask[i][t].progress}</td>
                 <td>Finished</td>
-                <td><a href="/api/task/${t}">Link</a></td>`;
+                <td><a href="/api/task/default/${t}">Link</a></td>`;
+      html += '</tr>';
+    }
+
+    //Agg Finished tasks
+    for (var i = 0; i < aftask_length; i++) {
+      var t = Object.keys(aftask[i])[0];
+      html += '<tr bgcolor="#69E0D3">';
+      html +=  `<td>${aftask[i][t].handled_time}</td>
+                <td>${t.substring(0,8)}</td>
+                <td>${aftask[i][t].handled_by}</td>
+                <td>${aftask[i][t].progress}</td>
+                <td>Finished</td>
+                <td><a href="/api/task/aggregator/${t}">Link</a></td>`;
       html += '</tr>';
     }
 

@@ -1,5 +1,7 @@
+#AGGREGATOR
+
 import time
-from rq import get_current_job
+from rq import get_current_job, Queue, Connection
 import socket
 
 import pandas as pd
@@ -24,7 +26,8 @@ NODES = '_nodes'
 REDIS_URL = 'redis://redis:6379/0'
 QUEUES = ['default']
 
-redis_connection = redis.from_url(REDIS_URL)
+# redis_connection = redis.from_url(REDIS_URL)
+redis_connection = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
 
 #this might be slower, and i should probably put the tasks inside the worker.py
 #or can I just preload the libraries there?
@@ -71,7 +74,7 @@ def appendToListK(r, K, V):
 
 def getListK(r, K):
   # r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
-  output = r.lrange(K)
+  output = r.lrange(K, 0, -1)
   if output is not None:
     return output
   else:
@@ -86,17 +89,51 @@ def get_current_time():
   local_time = ts.strftime('%Y-%m-%d %H:%M:%S %Z')
   return local_time
 
+# def aggregate_data(unique_ID):
+#   redis_connection = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+#   node_count = getRedisV(redis_connection, unique_ID + NODE_COUNT)
+#   done_node_count = getRedisV(redis_connection, unique_ID + DONE_NODE_COUNT)
+#   status = getRedisV(redis_connection, unique_ID)
+
+#   if status == "finished":
+#     with Connection(redis.from_url(REDIS_URL)):
+#       node_task_id_list = getListK(redis_connection, unique_ID + NODES)
+
+#   d = {'JP': 'Talusan', 'result': status, 'unique_ID': unique_ID, 'done_node_count': done_node_count, 'node_task_id_list': node_task_id_list}
+#   return d
+
 def aggregate_data(unique_ID):
+  tic = time.clock()
+  job = get_current_job()
+  job.meta['handled_by'] = socket.gethostname()
+  job.meta['handled_time'] = get_current_time()
+  job.meta['progress'] = 0.0
+  job.meta['unique_ID'] = unique_ID
+
+  redis_connection = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+  # redis_connection = redis.from_url(REDIS_URL)
   node_count = getRedisV(redis_connection, unique_ID + NODE_COUNT)
   done_node_count = getRedisV(redis_connection, unique_ID + DONE_NODE_COUNT)
   status = getRedisV(redis_connection, unique_ID)
-
   if status == "finished":
-    with Connection(connection=redis_connection):
+    with Connection(redis.from_url(REDIS_URL)):
       node_task_id_list = getListK(redis_connection, unique_ID + NODES)
-      all_results = ''
+      # all_results = node_task_id_list
+      #TODO: Assuming the return of the processors are lists
+      all_results = []
       for task_id in node_task_id_list:
-        q = Queue()
+        # all_results += task_id
+        q = Queue('default')
         task = q.fetch_job(task_id)
-        all_results += task.result
-      return all_results
+        if task is not None:
+          # all_results.append(task.result)
+          #or
+          all_results += task.result
+        # all_results += task.result.decode("utf-8")
+
+      d = {'result': all_results, 'unique_ID': unique_ID, 'done_node_count': done_node_count, 'node_task_id_list': node_task_id_list}
+
+      toc = time.clock()
+      job.meta['progress'] = toc - tic
+      job.save_meta()
+      return d
