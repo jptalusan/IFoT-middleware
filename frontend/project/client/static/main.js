@@ -219,7 +219,6 @@ function getTaskStatus() {
                 <td><a href="/api/task/aggregator/${t}">Link</a></td>`;
       html += '</tr>';
     }
-
     
     $('#tasks').html(html);
 
@@ -250,22 +249,26 @@ $('.getmetas').on('click', function() {
     method: 'POST'
   })
   .done((res) => {
-    // console.log(res);
-    // console.log(res.finished_tasks);
     if (window.isTaskWatchOngoing == false) {
       getTaskStatus();
       console.log(window.isTaskWatchOngoing);
     }
-    // Loop through all IDs 
-    // //create html file <tr><td><td>....
-    // if finished:
-    //   get results alongside the task/<task_id> json
-    // else if queued
-    //   get current status
-    // else: //if failed
-    //   inform also in table
-    // prepend html file to #tasks class
-    // or gather all html string and then make one big string, and then replace the tasks
+  })
+  .fail((err) => {
+    console.log(err);
+  });
+});
+
+$('.test_nuts').on('click', function() {
+  console.log('button clicked!');
+  $.ajax({
+    url: '/api/nuts_classify',
+    data: { type: $(this).data('type') },
+    method: 'POST'
+  })
+  .done((res) => {    
+    console.log(res.unique_ID);
+    console.log(res.data.task_id);
   })
   .fail((err) => {
     console.log(err);

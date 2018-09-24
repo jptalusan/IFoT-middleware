@@ -90,11 +90,12 @@ def start_iris_dist_process():
         funcs.setRedisKV(redis_conn, u_ID + NODE_COUNT, nodes)
         funcs.setRedisKV(redis_conn, u_ID + DONE_NODE_COUNT, 0)
 
-        for file in files:
+        #assuming the files are in sequential order, we can send some sequence id to the queue
+        for sequence_ID, file in enumerate(files):
           data = file.read()
           #Need to decode?
           #Race condition i think.
-          task = q.enqueue('tasks.classify_iris_dist', data, nodes, u_ID)
+          task = q.enqueue('tasks.classify_iris_dist', data, nodes, u_ID, sequence_ID)
 
       return 'Classifying Distributedly...'
   except IOError:

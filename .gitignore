@@ -129,4 +129,6 @@ pyvenv.cfg
 pip-selfcheck.json
 
 .csv
+.sav
+.tar.gz
 # End of https://www.gitignore.io/api/python

@@ -16,6 +16,7 @@ import time
 import datetime
 from dateutil import tz
 import redis
+import collections
 
 #Aggregator
 
@@ -121,6 +122,9 @@ def aggregate_data(unique_ID):
       # all_results = node_task_id_list
       #TODO: Assuming the return of the processors are lists
       all_results = []
+
+      #Checking sequence just in case, but costs another for loop
+      sequence_dict = {}
       for task_id in node_task_id_list:
         # all_results += task_id
         q = Queue('default')
@@ -128,8 +132,14 @@ def aggregate_data(unique_ID):
         if task is not None:
           # all_results.append(task.result)
           #or
-          all_results += task.result
+          task_results = task.result["output"]
+          sequence_ID = task.result["sequence_ID"]
+          sequence_dict[sequence_ID] = task_results
         # all_results += task.result.decode("utf-8")
+      ordered_sequence_dict = collections.OrderedDict(sorted(sequence_dict.items()))
+      for k, v in ordered_sequence_dict.items(): 
+        print(k, v)
+        all_results += v
 
       d = {'result': all_results, 'unique_ID': unique_ID, 'done_node_count': done_node_count, 'node_task_id_list': node_task_id_list}
 

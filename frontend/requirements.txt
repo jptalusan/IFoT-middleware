@@ -13,3 +13,6 @@ flask-sqlalchemy
 flask-migrate
 
 requests
+
+#For reading .npy files.
+numpy

@@ -11,6 +11,8 @@ from rq.registry import StartedJobRegistry, FinishedJobRegistry
 import urllib.request, json 
 import requests
 
+import numpy as np
+
 NODE_COUNT = '_node_count'
 DONE_NODE_COUNT = '_done_node_count'
 
@@ -309,3 +311,78 @@ def flush_redis():
   except Exception as e:
     print(e)
     return e
+
+def fix_labels(label):
+  #Labels
+  #For feature extraction i think
+  # %%time
+  reshape_label = label.reshape(len(label)//window_size, window_size)
+
+  correct_label = []
+
+  for i in range(reshape_label.shape[0]):
+      rows = reshape_label[i, :]
+      unique, counts = np.unique(rows, return_counts=True)
+      out = np.asarray((unique, counts)).T
+      if out[0][1] != float(window_size):
+          max_ind = np.argmax(np.max(out, axis=1))
+          correct_label.append(out[max_ind, 0])
+      elif out[0][1] == float(window_size):
+          correct_label.append(out[0][0])
+
+  y = np.array(correct_label)
+  print(y.shape)
+  return y
+
+TARGET_NAMES = ["still", "walk",  "run",  "bike",  "car",  "bus",  "train",  "subway"]
+NUM_CLASSES = len(TARGET_NAMES)
+window_size = 100
+
+#I can pass bytes as well as list of strings, strings etc...
+#like f = open("myfile", "rb")
+#f.read()
+@api.route('/nuts_classify', methods=['GET', 'POST'])
+def nuts_classify():
+  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+    q = Queue('default')
+
+    #Make post parameters
+    number_of_chunks = 15
+    single_chunk = np.random.randint(1, number_of_chunks)
+    filename = 'labels_' + str(single_chunk) + '.npy'
+    path = os.path.join(current_app.instance_path, 'htmlfi/Chunks', filename)
+    label = np.load(path)
+
+    y = fix_labels(label)
+    y_str = y.tostring()
+
+    feat_name_list = [
+        "acc_x", "acc_y", "acc_z", "acc_comp",
+        "lacc_x", "lacc_y", "lacc_z", "lacc_comp",
+        "gra_x", "gra_y", "gra_z", "gra_comp",
+        "gyr_x", "gyr_y", "gyr_z", "gyr_comp",
+        "mag_x", "mag_y", "mag_z", "mag_comp",
+        "ori_w", "ori_x", "ori_y", "ori_z", "pre"]
+
+    #Only doing this because we assume that SB (master, for now)
+    #contains the data and distributes it as well to the workers
+
+    raw_data_arrays = []
+    for name in feat_name_list:
+      raw_filename = name + '_' + str(single_chunk) + '.npy'
+      raw_path = os.path.join(current_app.instance_path, 'htmlfi/Chunks', raw_filename)
+      raw_temp_str = np.load(raw_path).tostring() #Float64
+      raw_data_arrays.append(raw_temp_str)
+
+    temp = ['hello', 'world', 'good', 'morning!']
+    temp2 = 'testing'
+    btemp2 = str.encode(temp2)
+    task = q.enqueue('NUTS_Tasks.feat_Extract_And_Classify', raw_data_arrays, y_str)
+    response_object = {
+        'status': 'success',
+        'unique_ID': 'NUTS FEAT EXTRACT',
+        'data': {
+          'task_id': task.get_id()
+      }
+    }
+    return jsonify(response_object), 202

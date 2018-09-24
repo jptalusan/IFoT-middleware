@@ -104,6 +104,7 @@ def create_task(task_type, unique_ID):
 
   # return {'result':unique_ID}
 
+#Receive a string and convert it to StringIO stream
 def classify_iris(input_data):
   tic = time.clock()
 
@@ -132,7 +133,7 @@ def classify_iris(input_data):
   print(output)
   return output
 
-def classify_iris_dist(input_data, nodes, unique_ID):
+def classify_iris_dist(input_data, nodes, unique_ID, sequence_ID):
   job = get_current_job()
   redis_connection = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
 
@@ -179,4 +180,4 @@ def classify_iris_dist(input_data, nodes, unique_ID):
   else:
     print('still not done processing')
 
-  return output
+  return { 'sequence_ID': sequence_ID, 'output': output }
