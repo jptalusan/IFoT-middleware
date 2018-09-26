@@ -15,6 +15,12 @@ import scipy.fftpack
 from scipy.stats import entropy
 import pickle
 
+from rq import get_current_job
+import socket
+import time
+import datetime
+from dateutil import tz
+
 import NUTS_Funcs
 
 TARGET_NAMES = ["still", "walk",  "run",  "bike",  "car",  "bus",  "train",  "subway"]
@@ -22,7 +28,23 @@ NUM_CLASSES = len(TARGET_NAMES)
 window_size = 100
 N = 100
 
+def get_current_time():
+  HERE = tz.gettz('Asia/Tokyo')
+  UTC = tz.gettz('UTC')
+
+  ts = datetime.datetime.utcnow().replace(tzinfo=UTC).astimezone(HERE)
+  # local_time = ts.strftime('%Y-%m-%d %H:%M:%S.%f %Z%z')
+  local_time = ts.strftime('%Y-%m-%d %H:%M:%S %Z')
+  return local_time
+
 def feat_Extract_And_Classify(feat_list, test_list):
+  tic = time.clock()
+  job = get_current_job()
+
+  job.meta['handled_by'] = socket.gethostname()
+  job.meta['handled_time'] = get_current_time()
+  job.save_meta()
+
   number_of_chunks = 15
   single_chunk = np.random.randint(1, number_of_chunks)
 
@@ -93,23 +115,24 @@ def feat_Extract_And_Classify(feat_list, test_list):
   ))
 
   #Creating own model
-  from sklearn.ensemble import RandomForestClassifier
-  from sklearn.metrics import confusion_matrix
-  from sklearn.model_selection import train_test_split
+  # from sklearn.ensemble import RandomForestClassifier
+  # from sklearn.metrics import confusion_matrix
+  # from sklearn.model_selection import train_test_split
 
-  x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.20, shuffle=False)
+  # x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.20, shuffle=False)
 
-  clf = RandomForestClassifier()
-  clf.fit(x_train, y_train)
+  # clf = RandomForestClassifier()
+  # clf.fit(x_train, y_train)
 
-  clf_name = 'models/test.sav'
-  pickle.dump(clf, open(clf_name, 'wb'))
+  # clf_name = 'models/test.sav'
+  # pickle.dump(clf, open(clf_name, 'wb'))
+
   # # Using preloaded model for classification
   #Problem: https://stackoverflow.com/questions/21033038/scikits-learn-randomforrest-trained-on-64bit-python-wont-open-on-32bit-python
 
   # clf_name = 'all_activity_all_features_random_forest_100.sav'
   # clf_name = 'models/all_activity_all_features_random_forest.sav'
-  clf_name = 'models/test.sav'
+  clf_name = 'models/01_ANN_all_label_all_features_model_100.sav'
   loaded_clf = pickle.load(open(clf_name, 'rb'))
   y_pred = loaded_clf.predict(X)
 
@@ -120,5 +143,16 @@ def feat_Extract_And_Classify(feat_list, test_list):
   print(np.where(np.not_equal(y_pred, y)))
   print(y_pred)
   print(y)
-  return "NUTS_Task: done" + str((y_pred==y).all())
+
+  toc = time.clock()
+  job.meta['progress'] = toc - tic
+  job.save_meta()
+
+  classification = ''
+  for pred in y_pred:
+    classification += TARGET_NAMES[int(pred) - 1] + ','
+
+
+
+  return { "results": classification }
 
