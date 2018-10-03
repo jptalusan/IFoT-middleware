@@ -31,6 +31,7 @@ def create_app(script_info=None):
     #db = SQLAlchemy(app)
     #migrate = Migrate(app, db)
 
+
     # set up extensions
     bootstrap.init_app(app)
 

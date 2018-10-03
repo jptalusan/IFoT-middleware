@@ -8,20 +8,21 @@
   debug: {{ debug }}
   <br>
   <button type="button" class="btn btn-primary" data-type="1">Run 10 second task</button>
-  <br>
   <button type="button" class="checkQueue btn-primary" data-type="1">Check queue</button>
-  <br>
   <button type="button" class="getAllQueues btn-primary" data-type="1">Get all tasks</button>
-  <br>
+  <br><br>
   <button type="button" class="getmetas btn-primary" data-type="1">Watch tasks</button>
-  <br>
   <button type="button" class="test_redis btn-primary" data-type="1">set Redis</button>
-  <br>
   <button type="button" class="get_redis btn-primary" data-type="1">get Redis</button>
-  <br>
+  <br><br>
   <button type="button" class="flush_redis btn-primary" data-type="1">Flush Redis</button>
-  <br>
   <button type="button" class="test_nuts btn-primary" data-type="1">Test_Nuts</button>
+  <br><br>
+  <table style="width:50%">
+    <td><a href={{ url_for('main.iris_classifier') }} target="_blank">iris_classifier</a></td>
+    <td><a href={{ url_for('main.nuts_classifier') }} target="_blank">nuts_classifier</a></td>
+  </table>
+  <br><br>
 </div>
 
 <div class='my-legend'>
@@ -44,8 +45,8 @@
 	<br>
 	<table style="width:100%">
 		<thead>
-			<tr>
-				<th>Handled Time</th>
+		  <tr  class="header expand">
+				<th colspan="1">Handled Time <span class="sign"></span></th>
 				<th>ID</th>
 				<th>Handler</th>
 				<th>Progress</th>

@@ -16,14 +16,28 @@ body {
   line-height: 50px;
 }
 
-table, th, td {
+table, th, td, tr {
   border: 1px solid black;
   padding: 5px;
+  border-collapse:collapse;
 }
+
 table {
   border-spacing: 15px;
 }
 
+tr.header
+{
+    cursor:pointer;
+}
+.header .sign:after{
+  content:"+";
+  display:inline-block;      
+}
+.header.expand .sign:after{
+  content:"-";
+ }
+ 
 .my-legend .legend-title {
   text-align: left;
   margin-bottom: 5px;

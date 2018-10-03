@@ -10,7 +10,7 @@ version: '3'
 
 services:
   frontend:
-    image: raspberrypi3-05:5000/frontend-ifot
+    image: nuc1:5000/frontend-ifot
     #image: ifot/frontend
     build:
       context: ./frontend
@@ -33,7 +33,7 @@ services:
   #Backend simply just running redis rq worker
   #needs task files to be deployed in all workers
   backend:
-    image: raspberrypi3-05:5000/worker-ifot
+    image: nuc1:5000/worker-ifot
     #image: ifot/backend
     build:
       context: ./backend
@@ -54,7 +54,7 @@ services:
       replicas: 3
 
   aggregator:
-    image: raspberrypi3-05:5000/worker-ifot
+    image: nuc1:5000/worker-ifot
     ports:
       - "5003:5003"
     command: python3 worker.py
@@ -68,14 +68,14 @@ services:
           - node.role == manager
 
   redis:
-    image: raspberrypi3-05:5000/redis:4.0.10
+    image: nuc1:5000/redis:4.0.10
     ports:
       - "6379:6379"
 
   redis_dashboard:
     build: ./redis_dashboard
     #image: ifot/r_dashboard
-    image: raspberrypi3-05:5000/dashboard-ifot
+    image: nuc1:5000/dashboard-ifot
     container_name: redis_dashboard
     ports:
       - "9181:9181"

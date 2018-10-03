@@ -79,3 +79,37 @@ def freq_features_extract(X):
     temp = np.hstack((highest_magnitude, highest_magnitude_located, ent, total_energy.reshape(row, 1), subband_energy, ratio_subband_energy, subband_ent, cps, diff_cps))
     return temp
 
+def generate_unique_ID():
+  return datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')
+
+def setRedisKV(r, K, V):
+  try:
+    # r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+    r.set(K, V)
+    return True
+  except:
+    return False
+
+def getRedisV(r, K):
+  # r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+  output = r.get(K)
+  if output is not None:
+    return output
+  else:
+    return "Empty"
+
+def appendToListK(r, K, V):
+  try:
+    # r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+    r.rpush(K, V)
+    return True
+  except:
+    return False
+
+def incrRedisKV(r, K):
+  try:
+    # r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+    r.incr(K)
+    return True
+  except:
+    return False

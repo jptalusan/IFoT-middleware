@@ -11,8 +11,14 @@ from rq.registry import StartedJobRegistry, FinishedJobRegistry
 import urllib.request, json 
 import requests
 
+from ..forms.upload_form import TextForm
+
+from ..main import funcs
 import numpy as np
 
+import time
+import datetime
+from dateutil import tz
 NODE_COUNT = '_node_count'
 DONE_NODE_COUNT = '_done_node_count'
 
@@ -338,51 +344,120 @@ TARGET_NAMES = ["still", "walk",  "run",  "bike",  "car",  "bus",  "train",  "su
 NUM_CLASSES = len(TARGET_NAMES)
 window_size = 100
 
-#I can pass bytes as well as list of strings, strings etc...
-#like f = open("myfile", "rb")
-#f.read()
+def get_current_time():
+  HERE = tz.gettz('Asia/Tokyo')
+  UTC = tz.gettz('UTC')
+
+  ts = datetime.datetime.utcnow().replace(tzinfo=UTC).astimezone(HERE)
+  # local_time = ts.strftime('%Y-%m-%d %H:%M:%S.%f %Z%z')
+  local_time = ts.strftime('%Y-%m-%d %H:%M:%S.%f %Z')[:-3]
+  return local_time
+
+def intializeQuery(total_nodes):
+  r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+
+  u_ID = funcs.generate_unique_ID()
+  funcs.setRedisKV(r, u_ID, 'ongoing')
+  funcs.setRedisKV(r, u_ID + NODE_COUNT, total_nodes)
+  funcs.setRedisKV(r, u_ID + DONE_NODE_COUNT, 0)
+
+  return u_ID
+
+feat_name_list = [
+    "acc_x", "acc_y", "acc_z", "acc_comp",
+    "lacc_x", "lacc_y", "lacc_z", "lacc_comp",
+    "gra_x", "gra_y", "gra_z", "gra_comp",
+    "gyr_x", "gyr_y", "gyr_z", "gyr_comp",
+    "mag_x", "mag_y", "mag_z", "mag_comp",
+    "ori_w", "ori_x", "ori_y", "ori_z", "pre"]
+
+#TODO: Fix for moren odes above 3
 @api.route('/nuts_classify', methods=['GET', 'POST'])
 def nuts_classify():
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
     q = Queue('default')
+    form = TextForm(meta={'csrf_context': request.remote_addr})
+    if form.validate_on_submit():
+      node_count = form.node_count.data
+      number_of_chunks = form.chunk_count.data
+      model_type = form.model_type.data
 
-    #Make post parameters
-    number_of_chunks = 15
-    single_chunk = np.random.randint(1, number_of_chunks)
-    filename = 'labels_' + str(single_chunk) + '.npy'
-    path = os.path.join(current_app.instance_path, 'htmlfi/Chunks', filename)
-    label = np.load(path)
+      unique_ID = intializeQuery(node_count)
+      total_chunks = 15 #hard coded because i only saved 15 chunks in the server
+      #Now need to make everything into lists
+      chunks = []
+      while len(chunks) != number_of_chunks:
+        single_chunk = np.random.randint(0, total_chunks)
+        if single_chunk in chunks:
+          continue
+        else:
+          chunks.append(single_chunk)
 
-    y = fix_labels(label)
-    y_str = y.tostring()
+      div, mod = divmod(number_of_chunks, node_count)
 
-    feat_name_list = [
-        "acc_x", "acc_y", "acc_z", "acc_comp",
-        "lacc_x", "lacc_y", "lacc_z", "lacc_comp",
-        "gra_x", "gra_y", "gra_z", "gra_comp",
-        "gyr_x", "gyr_y", "gyr_z", "gyr_comp",
-        "mag_x", "mag_y", "mag_z", "mag_comp",
-        "ori_w", "ori_x", "ori_y", "ori_z", "pre"]
+      index = 0
+      chunk_lists = []
+      node_data_list = []
+      node_label_list = []
 
-    #Only doing this because we assume that SB (master, for now)
-    #contains the data and distributes it as well to the workers
+      for i in range(node_count):
+        slice = chunks[index: index + div]
+        index += div
+        chunk_lists.append(slice)
 
-    raw_data_arrays = []
-    for name in feat_name_list:
-      raw_filename = name + '_' + str(single_chunk) + '.npy'
-      raw_path = os.path.join(current_app.instance_path, 'htmlfi/Chunks', raw_filename)
-      raw_temp_str = np.load(raw_path).tostring() #Float64
-      raw_data_arrays.append(raw_temp_str)
+      for i in range(mod):
+        slice = chunks[index: index + div]
+        chunk_lists[i].extend(slice)
+        index += div
 
-    temp = ['hello', 'world', 'good', 'morning!']
-    temp2 = 'testing'
-    btemp2 = str.encode(temp2)
-    task = q.enqueue('NUTS_Tasks.feat_Extract_And_Classify', raw_data_arrays, y_str)
-    response_object = {
-        'status': 'success',
-        'unique_ID': 'NUTS FEAT EXTRACT',
-        'data': {
-          'task_id': task.get_id()
-      }
-    }
-    return jsonify(response_object), 202
+      json_response = {}
+      json_response['tasks'] = []
+      json_response['query_ID'] = unique_ID
+      json_response['query_received'] = get_current_time()
+
+      label_list = []
+      data_list = []
+      np_data_arrays = []
+      for chunk_list in chunk_lists:
+        for chunk in chunk_list:
+          filename = 'labels_' + str(chunk) + '.npy'
+          path = os.path.join(current_app.instance_path, 'htmlfi/Chunks', filename)
+          label = np.load(path)
+          label_list.append(label)
+
+          for i, name in enumerate(feat_name_list):
+            raw_filename = name + '_' + str(chunk) + '.npy'
+            raw_path = os.path.join(current_app.instance_path, 'htmlfi/Chunks', raw_filename)
+            np_temp = np.load(raw_path)
+            if len(np_data_arrays) == len(feat_name_list):
+              np_data_arrays[i].extend([np_temp])
+            else:
+              np_data_arrays.append([np_temp])
+
+        #TODO:
+        label_all = np.concatenate(label_list)
+
+        y = fix_labels(label_all)
+        y_str = y.tostring()
+
+        for np_data_array in np_data_arrays:
+          np_all = np.concatenate(np_data_array)
+          all_str = np_all.tostring()
+          data_list.append(all_str)
+  
+        task = q.enqueue('NUTS_Tasks.feat_Extract_And_Classify', data_list, y_str, unique_ID)
+        response_object = {
+            'status': 'success',
+            'unique_ID': 'NUTS FEAT EXTRACT',
+            'data': {
+              'task_id': task.get_id()
+          }
+        }
+        json_response['tasks'].append(response_object)
+        label_list = []
+        data_list = []
+        np_data_arrays = []
+
+      return jsonify(json_response), 202
+    else:
+      return jsonify({'status':'error'})
