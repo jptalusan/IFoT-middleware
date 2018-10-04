@@ -3,6 +3,7 @@ from wtforms import FileField, IntegerField, SubmitField, SelectField
 from wtforms.validators import InputRequired, NumberRange
 from wtforms.csrf.core import CSRF
 from hashlib import md5
+from flask import current_app
 
 SECRET_KEY = b"1234567890"
 
@@ -32,7 +33,7 @@ class TextForm(FlaskForm):
     csrf_class = IPAddressCSRF
 
   node_count = IntegerField("Number of Nodes:", validators=[NumberRange(1, 3)])
-  chunk_count = IntegerField("Number of 10 second chunks:", validators=[NumberRange(1, 15)])
+  chunk_count = IntegerField("Number of 10 second chunks:", validators=[NumberRange(1, 200)])
   model_type = SelectField(
         u'Model type',
         choices = [('NN', 'nn'), ('SVM', 'svm')]

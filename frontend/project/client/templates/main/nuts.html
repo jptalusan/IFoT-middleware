@@ -48,7 +48,7 @@
     {% endfor %}
     {{ form.csrf_token }}
     <form method="post">
-      {{ form.chunk_count.label }} (1-15)
+      {{ form.chunk_count.label }} (1-200)
       {{ form.chunk_count }}
       <br>
       {{ form.node_count.label }} (1-3)

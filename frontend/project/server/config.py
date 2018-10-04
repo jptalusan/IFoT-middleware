@@ -13,6 +13,8 @@ class BaseConfig(object):
         'sqlite:///' + os.path.join(basedir, 'app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = 'client/static/uploads'
+    TOTAL_CHUNKS = 200
+    NUMBER_OF_NODES = 3
 
 class DevelopmentConfig(BaseConfig):
     """Development configuration."""

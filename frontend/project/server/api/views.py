@@ -378,12 +378,13 @@ def nuts_classify():
     q = Queue('default')
     form = TextForm(meta={'csrf_context': request.remote_addr})
     if form.validate_on_submit():
+      tic = time.clock()
       node_count = form.node_count.data
       number_of_chunks = form.chunk_count.data
       model_type = form.model_type.data
 
       unique_ID = intializeQuery(node_count)
-      total_chunks = 15 #hard coded because i only saved 15 chunks in the server
+      total_chunks = 200 #hard coded because i only saved 15 chunks in the server
       #Now need to make everything into lists
       chunks = []
       while len(chunks) != number_of_chunks:
@@ -445,7 +446,7 @@ def nuts_classify():
           all_str = np_all.tostring()
           data_list.append(all_str)
   
-        task = q.enqueue('NUTS_Tasks.feat_Extract_And_Classify', data_list, y_str, unique_ID)
+        task = q.enqueue('NUTS_Tasks.feat_Extract_And_Classify', data_list, y_str, model_type, unique_ID)
         response_object = {
             'status': 'success',
             'unique_ID': 'NUTS FEAT EXTRACT',
@@ -458,6 +459,8 @@ def nuts_classify():
         data_list = []
         np_data_arrays = []
 
+      toc = time.clock()
+      json_response['progress'] = toc - tic
       return jsonify(json_response), 202
     else:
       return jsonify({'status':'error'})

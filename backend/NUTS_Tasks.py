@@ -49,7 +49,7 @@ def get_current_time():
   local_time = ts.strftime('%Y-%m-%d %H:%M:%S.%f %Z')
   return local_time
 
-def feat_Extract_And_Classify(feat_list, test_list, unique_ID):
+def feat_Extract_And_Classify(feat_list, test_list, model_type, unique_ID):
 
 
   tic = time.clock()
@@ -102,8 +102,11 @@ def feat_Extract_And_Classify(feat_list, test_list, unique_ID):
   ))
 
   #TODO: Support choosing model from UI
-  # clf_name = 'models/01_ANN_all_label_all_features_model_100.sav'
-  clf_name = 'models/01_SVM_all_label_all_features_model_100.sav'
+  if model_type == 'NN':
+    clf_name = 'models/01_ANN_all_label_all_features_model_100.sav'
+  elif model_type == 'SVM':
+    clf_name = 'models/01_SVM_all_label_all_features_model_100.sav'
+
   loaded_clf = pickle.load(open(clf_name, 'rb'))
   y_pred = loaded_clf.predict(X)
 
@@ -131,5 +134,5 @@ def feat_Extract_And_Classify(feat_list, test_list, unique_ID):
       q = Queue('aggregator')
       t = q.enqueue('tasks.aggregate_nuts_data', unique_ID, depends_on=job.id) #job is this current job
 
-  return { 'sequence_ID': unique_ID, 'output': output, 'outsize': len(output)}
+  return { 'sequence_ID': unique_ID, 'output': output, 'outsize': len(output), 'model_type': model_type}
 
