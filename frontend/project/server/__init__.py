@@ -46,7 +46,10 @@ def create_app(script_info=None):
 
     # register blueprints
     from project.server.api.views import api
+    # from project.server.main.views import main_blueprint
     csrf.exempt(api)
+    # csrf.exempt(main_blueprint)
+    # app.register_blueprint(main_blueprint)
     app.register_blueprint(api, url_prefix='/api')
     # shell context for flask cli
     app.shell_context_processor({'app': app})

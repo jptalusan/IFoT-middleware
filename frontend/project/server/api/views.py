@@ -20,9 +20,10 @@ import time
 import datetime
 from dateutil import tz
 
+import multiprocessing
+
 NODE_COUNT = '_node_count'
 DONE_NODE_COUNT = '_done_node_count'
-
 
 api = Blueprint('api', __name__,)
 
@@ -371,6 +372,51 @@ feat_name_list = [
     "mag_x", "mag_y", "mag_z", "mag_comp",
     "ori_w", "ori_x", "ori_y", "ori_z", "pre"]
 
+def enqueue_npy_files(unique_ID, model_type, chunk_list, mp_q):
+  label_list = []
+  data_list = []
+  np_data_arrays = []
+  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+    q = Queue('default')
+    print("Handling chunks: ", chunk_list)
+    for chunk in chunk_list:
+      filename = 'labels_' + str(chunk) + '.npy'
+      path = os.path.join(current_app.instance_path, 'htmlfi/Chunks', filename)
+      label = np.load(path)
+      label_list.append(label)
+
+      for i, name in enumerate(feat_name_list):
+        raw_filename = name + '_' + str(chunk) + '.npy'
+        raw_path = os.path.join(current_app.instance_path, 'htmlfi/Chunks', raw_filename)
+        np_temp = np.load(raw_path)
+        if len(np_data_arrays) == len(feat_name_list):
+          np_data_arrays[i].extend([np_temp])
+        else:
+          np_data_arrays.append([np_temp])
+
+    label_all = np.concatenate(label_list)
+    y = fix_labels(label_all)
+    y_str = y.tostring()
+
+    for np_data_array in np_data_arrays:
+      np_all = np.concatenate(np_data_array)
+      all_str = np_all.tostring()
+      data_list.append(all_str)
+
+    task = q.enqueue('NUTS_Tasks.feat_Extract_And_Classify', data_list, y_str, model_type, unique_ID)
+    response_object = {
+        'status': 'success',
+        'unique_ID': 'NUTS FEAT EXTRACT',
+        'data_list_len': len(data_list[0]),
+        'y_str_len': len(y_str),
+        'model_type': model_type,
+        'chunk_list': chunk_list,
+        'data': {
+          'task_id': task.get_id()
+      }
+    }
+    mp_q.put(response_object)
+
 #TODO: Fix for moren odes above 3
 @api.route('/nuts_classify', methods=['GET', 'POST'])#, 'OPTIONS'])
 def nuts_classify():
@@ -416,53 +462,26 @@ def nuts_classify():
         chunk_lists[i].extend(slice)
         index += div
 
+      #For debugging, need 202 return no.
+      # return jsonify(chunk_lists[0]), 202
+
       json_response = {}
       json_response['tasks'] = []
       json_response['query_ID'] = unique_ID
       json_response['query_received'] = get_current_time()
-
-      label_list = []
-      data_list = []
-      np_data_arrays = []
+      
+      out_q = multiprocessing.Queue()
+      procs = []
       for chunk_list in chunk_lists:
-        for chunk in chunk_list:
-          filename = 'labels_' + str(chunk) + '.npy'
-          path = os.path.join(current_app.instance_path, 'htmlfi/Chunks', filename)
-          label = np.load(path)
-          label_list.append(label)
+        p = multiprocessing.Process(target=enqueue_npy_files, args=(unique_ID, model_type, chunk_list, out_q))
+        procs.append(p)
+        p.start()
 
-          for i, name in enumerate(feat_name_list):
-            raw_filename = name + '_' + str(chunk) + '.npy'
-            raw_path = os.path.join(current_app.instance_path, 'htmlfi/Chunks', raw_filename)
-            np_temp = np.load(raw_path)
-            if len(np_data_arrays) == len(feat_name_list):
-              np_data_arrays[i].extend([np_temp])
-            else:
-              np_data_arrays.append([np_temp])
+      for chunk_list in chunk_lists:
+        json_response['tasks'].append(out_q.get())
 
-        #TODO:
-        label_all = np.concatenate(label_list)
-
-        y = fix_labels(label_all)
-        y_str = y.tostring()
-
-        for np_data_array in np_data_arrays:
-          np_all = np.concatenate(np_data_array)
-          all_str = np_all.tostring()
-          data_list.append(all_str)
-
-        task = q.enqueue('NUTS_Tasks.feat_Extract_And_Classify', data_list, y_str, model_type, unique_ID)
-        response_object = {
-            'status': 'success',
-            'unique_ID': 'NUTS FEAT EXTRACT',
-            'data': {
-              'task_id': task.get_id()
-          }
-        }
-        json_response['tasks'].append(response_object)
-        label_list = []
-        data_list = []
-        np_data_arrays = []
+      for p in procs:
+        p.join()
 
       toc = time.clock()
       json_response['progress'] = toc - tic
