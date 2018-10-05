@@ -19,6 +19,7 @@ class BaseConfig(object):
 class DevelopmentConfig(BaseConfig):
     """Development configuration."""
     WTF_CSRF_ENABLED = False
+    CORS_HEADERS = 'Content-Type'
 
 
 class TestingConfig(BaseConfig):

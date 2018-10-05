@@ -19,6 +19,7 @@ import numpy as np
 import time
 import datetime
 from dateutil import tz
+
 NODE_COUNT = '_node_count'
 DONE_NODE_COUNT = '_done_node_count'
 
@@ -138,7 +139,6 @@ def get_task_status(queue, task_id):
       'data': {
           'task_id': task.get_id(),
           'task_status': task.get_status(),
-          'jp': 'test',
           'task_result': task.result,
       }
     }
@@ -372,16 +372,21 @@ feat_name_list = [
     "ori_w", "ori_x", "ori_y", "ori_z", "pre"]
 
 #TODO: Fix for moren odes above 3
-@api.route('/nuts_classify', methods=['GET', 'POST'])
+@api.route('/nuts_classify', methods=['GET', 'POST'])#, 'OPTIONS'])
 def nuts_classify():
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
     q = Queue('default')
-    form = TextForm(meta={'csrf_context': request.remote_addr})
+    #form = TextForm(meta={'csrf_context': request.remote_addr})
+    form = TextForm(meta={'csrf_context': 'secret_key'})
     if form.validate_on_submit():
       tic = time.clock()
       node_count = form.node_count.data
       number_of_chunks = form.chunk_count.data
       model_type = form.model_type.data
+
+      if node_count > number_of_chunks:
+        #Maybe i should just divide the chunks, no! haha 
+        return jsonify({'status':'node_count is greater than chunk_count'}), 616
 
       unique_ID = intializeQuery(node_count)
       total_chunks = 200 #hard coded because i only saved 15 chunks in the server
@@ -445,7 +450,7 @@ def nuts_classify():
           np_all = np.concatenate(np_data_array)
           all_str = np_all.tostring()
           data_list.append(all_str)
-  
+
         task = q.enqueue('NUTS_Tasks.feat_Extract_And_Classify', data_list, y_str, model_type, unique_ID)
         response_object = {
             'status': 'success',
@@ -462,5 +467,8 @@ def nuts_classify():
       toc = time.clock()
       json_response['progress'] = toc - tic
       return jsonify(json_response), 202
+    elif form.csrf_token.errors:
+      return jsonify({'status':'csrf_token_errors'})
     else:
       return jsonify({'status':'error'})
+

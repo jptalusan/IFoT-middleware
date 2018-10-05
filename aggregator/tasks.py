@@ -109,18 +109,21 @@ def aggregate_nuts_data(unique_ID):
       all_results = []
       #Checking sequence just in case, but costs another for loop
       sequence_dict = {}
+      model_type = '' 
       for task_id in node_task_id_list:
         # all_results += task_id
         q = Queue('default')
         task = q.fetch_job(task_id)
         if task is not None:
           all_results += task.result['output']
+          model_type = task.result['model_type']
 
       d = {'result': all_results, 
            'unique_ID': unique_ID, 
            'node_count': node_count, 
            'done_node_count': done_node_count, 
-           'node_task_id_list': node_task_id_list}
+           'node_task_id_list': node_task_id_list,
+           'model_type': model_type}
 
       toc = time.clock()
       job.meta['progress'] = toc - tic

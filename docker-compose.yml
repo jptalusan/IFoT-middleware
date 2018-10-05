@@ -27,6 +27,7 @@ services:
     environment:
       - FLASK_DEBUG=1
       - APP_SETTINGS=project.server.config.DevelopmentConfig
+      - WTF_CSRF_ENABLED = False
     restart: always
     depends_on:
       - redis
@@ -45,7 +46,7 @@ services:
     command: python3 worker.py
     volumes:
       - ./backend:/usr/src/app
-    restart: always
+    #restart: always
     depends_on:
       - redis
     deploy:
@@ -76,6 +77,10 @@ services:
     ports:
       - "6379:6379"
     restart: always
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
     # command: ["redis-server", "--appendonly", "yes"]
     # hostname: redis
 
