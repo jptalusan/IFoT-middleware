@@ -11,7 +11,7 @@ from rq.registry import StartedJobRegistry, FinishedJobRegistry
 import urllib.request, json 
 import requests
 
-from ..forms.upload_form import TextForm
+from ..forms.upload_form import TextForm, Nuts2Form
 
 from ..main import funcs
 import numpy as np
@@ -183,6 +183,24 @@ def checkqueue():
 def get_status(queue = None, task_id = None):
   return get_task_status(queue, task_id)
 
+
+@api.route('/queue_count', methods=['GET', 'POST'])#, 'OPTIONS'])
+def queue_count():
+  queue_out = {}
+  csv_out = str(int(time.time()))
+  csv_out += ','
+  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+    q = Queue('default')
+    # queue_out['default'] = len(q)
+    csv_out += str(len(q))
+    csv_out += ','
+    a = Queue('aggregator')
+    # queue_out['aggregator'] = len(a)
+    csv_out += str(len(a))
+  # return json.dumps(queue_out)
+  csv_out += '\n'
+  return csv_out
+
 @api.route('/getmetas', methods=['GET', 'POST'])
 def getmetas():
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
@@ -201,7 +219,7 @@ def getmetas():
     queued_tasks_ids = response_json["queued"]["queued_tasks_ids"]
 
     data = {}
-    
+
     data['running_tasks'] = []
     for task_id in running_tasks_ids:
       d = {}
@@ -310,6 +328,20 @@ def get_redis():
 
 @api.route('/flush_redis', methods=['GET','POST'])
 def flush_redis():
+  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+    queues = ['default', 'aggregator']
+
+    for queue in queues:
+      q = Queue(queue)
+      f_registry = FinishedJobRegistry(queue)
+      finished_job_ids = f_registry.get_job_ids()
+
+      for f_job_id in finished_job_ids:
+        j = q.fetch_job(f_job_id)
+        j.cleanup(0)
+
+  return "Flushed"
+'''
   try:
     r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
     r.set("msg:hello", "Hello Redis!!!")
@@ -318,6 +350,7 @@ def flush_redis():
   except Exception as e:
     print(e)
     return e
+'''
 
 def fix_labels(label):
   #Labels
@@ -468,8 +501,9 @@ def nuts_classify():
       json_response = {}
       json_response['tasks'] = []
       json_response['query_ID'] = unique_ID
+      #json_response['query_received'] = int(time.time())
       json_response['query_received'] = get_current_time()
-      
+
       out_q = multiprocessing.Queue()
       procs = []
       for chunk_list in chunk_lists:
@@ -491,3 +525,75 @@ def nuts_classify():
     else:
       return jsonify({'status':'error'})
 
+
+@api.route('/nuts2_classify', methods=['GET', 'POST'])#, 'OPTIONS'])
+def nuts2_classify():
+  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+    q = Queue('default')
+    form = Nuts2Form()
+    if form.validate_on_submit():
+      req = request.json
+      tic = time.clock()
+      node_count = req['node_count']
+      number_of_chunks = req['chunk_count']
+      model_type = req['model_type']
+
+      if node_count > number_of_chunks:
+        #Maybe i should just divide the chunks, no! haha 
+        return jsonify({'status':'node_count is greater than chunk_count'}), 616
+
+      unique_ID = intializeQuery(node_count)
+      total_chunks = 200 #hard coded because i only saved 15 chunks in the server
+      #Now need to make everything into lists
+      chunks = []
+      while len(chunks) != number_of_chunks:
+        single_chunk = np.random.randint(0, total_chunks)
+        if single_chunk in chunks:
+          continue
+        else:
+          chunks.append(single_chunk)
+
+      div, mod = divmod(number_of_chunks, node_count)
+
+      index = 0
+      chunk_lists = []
+      node_data_list = []
+      node_label_list = []
+
+      for i in range(node_count):
+        slice = chunks[index: index + div]
+        index += div
+        chunk_lists.append(slice)
+
+      for i in range(mod):
+        slice = chunks[index: index + div]
+        chunk_lists[i].extend(slice)
+        index += div
+
+      #For debugging, need 202 return no.
+      # return jsonify(chunk_lists[0]), 202
+
+      json_response = {}
+      json_response['tasks'] = []
+      json_response['query_ID'] = unique_ID
+      #json_response['query_received'] = int(time.time())
+      json_response['query_received'] = get_current_time()
+
+      out_q = multiprocessing.Queue()
+      procs = []
+      for chunk_list in chunk_lists:
+        p = multiprocessing.Process(target=enqueue_npy_files, args=(unique_ID, model_type, chunk_list, out_q))
+        procs.append(p)
+        p.start()
+
+      for chunk_list in chunk_lists:
+        json_response['tasks'].append(out_q.get())
+
+      for p in procs:
+        p.join()
+
+      toc = time.clock()
+      json_response['progress'] = toc - tic
+      return jsonify(json_response), 202
+    else:
+      return jsonify({'status':'error'})

@@ -56,18 +56,18 @@ def feat_Extract_And_Classify(feat_list, test_list, model_type, unique_ID):
   job = get_current_job()
 
   job.meta['handled_by'] = socket.gethostname()
-  job.meta['handled_time'] = get_current_time()
+  #job.meta['handled_time'] = get_current_time()
+  job.meta['handled_time'] = int(time.time())
   job.save_meta()
   
   redis_connection = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
   NUTS_Funcs.appendToListK(redis_connection, unique_ID + NODES, job.id)
 
-
   number_of_chunks = 15
   single_chunk = np.random.randint(1, number_of_chunks)
 
   y = np.fromstring(test_list, dtype='float64')
-  
+ 
   raw_data_arrays = []
   for feat in feat_list:
     raw_data_arrays.append(np.fromstring(feat, dtype='float64'))

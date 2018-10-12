@@ -93,7 +93,8 @@ def aggregate_nuts_data(unique_ID):
   tic = time.clock()
   job = get_current_job()
   job.meta['handled_by'] = socket.gethostname()
-  job.meta['handled_time'] = get_current_time()
+  #job.meta['handled_time'] = get_current_time()
+  job.meta['handled_time'] = int(time.time())
   job.meta['progress'] = 0.0
   # job.meta['unique_ID'] = unique_ID
 
@@ -134,7 +135,9 @@ def aggregate_data(unique_ID):
   tic = time.clock()
   job = get_current_job()
   job.meta['handled_by'] = socket.gethostname()
-  job.meta['handled_time'] = get_current_time()
+  #job.meta['handled_time'] = get_current_time()
+  job.meta['handled_time'] = int(time.time())
+
   job.meta['progress'] = 0.0
   # job.meta['unique_ID'] = unique_ID
 

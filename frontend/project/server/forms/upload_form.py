@@ -40,3 +40,10 @@ class TextForm(FlaskForm):
     )
   # submit = SubmitField("Process")
 
+class Nuts2Form(FlaskForm):
+  node_count = IntegerField("Number of Nodes:", validators=[NumberRange(1, 3)])
+  chunk_count = IntegerField("Number of 10 second chunks:", validators=[NumberRange(1, 200)])
+  model_type = SelectField(
+        u'Model type',
+        choices = [('NN', 'nn'), ('SVM', 'svm')]
+    )

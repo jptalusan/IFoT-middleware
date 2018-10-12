@@ -24,11 +24,15 @@ services:
       placement:
         constraints:
           - node.role == manager
+      restart_policy:
+        condition: any
+        delay: 5s
+        window: 10s
+        max_attempts: 5
     environment:
       - FLASK_DEBUG=1
       - APP_SETTINGS=project.server.config.DevelopmentConfig
       - WTF_CSRF_ENABLED = False
-    restart: always
     depends_on:
       - redis
 
@@ -55,6 +59,8 @@ services:
           - node.role == worker
       mode: replicated
       replicas: 3
+      restart_policy:
+        condition: any
 
   aggregator:
     image: nuc1:5000/worker-ifot
@@ -63,13 +69,14 @@ services:
     command: python3 worker.py
     volumes:
       - ./aggregator:/usr/src/app
-    restart: always
     depends_on:
       - redis
     deploy:
       placement:
         constraints:
           - node.role == manager
+      restart_policy:
+        condition: any
 
   redis:
     container_name: redis
@@ -81,6 +88,8 @@ services:
       placement:
         constraints:
           - node.role == manager
+      restart_policy:
+        condition: any
     # command: ["redis-server", "--appendonly", "yes"]
     # hostname: redis
 
