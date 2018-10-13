@@ -10,7 +10,7 @@ version: '3'
 
 services:
   frontend:
-    image: nuc1:5000/frontend-ifot
+    image: yu-nuc/frontend-ifot
     #image: ifot/frontend
     build:
       context: ./frontend
@@ -39,7 +39,7 @@ services:
   #Backend simply just running redis rq worker
   #needs task files to be deployed in all workers
   backend:
-    image: nuc1:5000/worker-ifot
+    image: yu-nuc/worker-ifot
     #image: ifot/backend
     build:
       context: ./backend
@@ -63,7 +63,7 @@ services:
         condition: any
 
   aggregator:
-    image: nuc1:5000/worker-ifot
+    image: yu-nuc/worker-ifot
     ports:
       - "5003:5003"
     command: python3 worker.py
@@ -80,7 +80,7 @@ services:
 
   redis:
     container_name: redis
-    image: nuc1:5000/redis:4.0.10
+    image: redis
     ports:
       - "6379:6379"
     restart: always
@@ -96,14 +96,15 @@ services:
   redis_dashboard:
     build: ./redis_dashboard
     #image: ifot/r_dashboard
-    image: nuc1:5000/dashboard-ifot
+    image: yu-nuc/dashboard-ifot
     container_name: redis_dashboard
     ports:
       - "9181:9181"
     command: rq-dashboard -H redis
 
   viz:
-    image: alexellis2/visualizer-arm:latest
+    image: dockersamples/visualizer
+    #image: alexellis2/visualizer-arm:latest
     ports:
       - "8080:8080"
     deploy:
