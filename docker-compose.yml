@@ -75,12 +75,10 @@ services:
       placement:
         constraints:
           - node.role == manager
-      restart_policy:
-        condition: any
 
   redis:
     container_name: redis
-    image: nuc1:5000/redis:4.0.10
+    image: nuc1:5000/arm-redis
     ports:
       - "6379:6379"
     restart: always

@@ -191,13 +191,10 @@ def queue_count():
   csv_out += ','
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
     q = Queue('default')
-    # queue_out['default'] = len(q)
+    f_registry = FinishedJobRegistry('default')
     csv_out += str(len(q))
     csv_out += ','
-    a = Queue('aggregator')
-    # queue_out['aggregator'] = len(a)
-    csv_out += str(len(a))
-  # return json.dumps(queue_out)
+    csv_out += str(len(f_registry.get_job_ids()))
   csv_out += '\n'
   return csv_out
 
