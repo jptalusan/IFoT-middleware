@@ -191,13 +191,10 @@ def queue_count():
   csv_out += ','
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
     q = Queue('default')
-    # queue_out['default'] = len(q)
+    f_registry = FinishedJobRegistry('default')
     csv_out += str(len(q))
     csv_out += ','
-    a = Queue('aggregator')
-    # queue_out['aggregator'] = len(a)
-    csv_out += str(len(a))
-  # return json.dumps(queue_out)
+    csv_out += str(len(f_registry.get_job_ids()))
   csv_out += '\n'
   return csv_out
 
@@ -574,9 +571,10 @@ def nuts2_classify():
       # return jsonify(chunk_lists[0]), 202
 
       json_response = {}
-      json_response['tasks'] = []
+      #json_response['tasks'] = []
+      json_response['params'] = str(node_count) + ',' + str(number_of_chunks) + ',' + str(model_type)
       json_response['query_ID'] = unique_ID
-      #json_response['query_received'] = int(time.time())
+      json_response['query_received_int'] = int(time.time())
       json_response['query_received'] = get_current_time()
 
       out_q = multiprocessing.Queue()
@@ -586,8 +584,10 @@ def nuts2_classify():
         procs.append(p)
         p.start()
 
+      '''
       for chunk_list in chunk_lists:
         json_response['tasks'].append(out_q.get())
+      '''
 
       for p in procs:
         p.join()
