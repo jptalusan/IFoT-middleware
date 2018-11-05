@@ -13,9 +13,11 @@ flask-sqlalchemy
 flask-migrate
 
 requests
+beautifulsoup4
 
-#For reading .npy files.
-numpy
+Pillow
+cairosvg
+imageio
 
 #A Flask extension for handling Cross Origin Resource Sharing (CORS), making cross-origin AJAX possible.
 flask-cors

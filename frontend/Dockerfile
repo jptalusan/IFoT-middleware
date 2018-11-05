@@ -10,6 +10,8 @@ WORKDIR /usr/src/app
 
 # add requirements (to leverage Docker cache)
 ADD ./requirements.txt /usr/src/app/requirements.txt
+ADD ./requirements-np.txt /usr/src/app/requirements-np.txt
 
 # install requirements
 RUN pip install -r requirements.txt
+RUN pip install -r requirements-np.txt

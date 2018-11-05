@@ -24,6 +24,9 @@ import redis
 
 import NUTS_Funcs
 
+from PIL import Image
+from bs4 import BeautifulSoup
+
 NODE_COUNT = '_node_count'
 DONE_NODE_COUNT = '_done_node_count'
 NODES = '_nodes'

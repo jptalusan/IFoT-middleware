@@ -11,6 +11,8 @@ from rq.registry import StartedJobRegistry, FinishedJobRegistry
 import urllib.request, json 
 import requests
 
+from bs4 import BeautifulSoup
+
 from ..forms.upload_form import TextForm, Nuts2Form
 
 from ..main import funcs
@@ -522,7 +524,6 @@ def nuts_classify():
     else:
       return jsonify({'status':'error'})
 
-
 @api.route('/nuts2_classify', methods=['GET', 'POST'])#, 'OPTIONS'])
 def nuts2_classify():
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
@@ -594,3 +595,87 @@ def nuts2_classify():
       return jsonify(json_response), 202
     else:
       return jsonify({'status':'error'})
+
+@api.route('/dt_get', methods=['GET', 'POST'])#, 'OPTIONS'])
+def dt_get():
+  req = request.get_json(force=True)
+  influx_ip = req['influx_ip']
+
+  if influx_ip == '163.221.68.206':
+    headers: { 'Accept': 'application/csv' }
+    payload = {
+      "db": 'bl01_db',
+      "pretty": True,
+      "epoch": 'ms',
+      "q": 'SELECT last(accel_y) from "bl01_db"."autogen"."meas_1"'
+    }
+    r = requests.get('http://' + influx_ip +':8086/query', params=payload)
+    last = json.loads(r.text)
+    last_time_int = last["results"][0]["series"][0]["values"][0][0]
+
+    payload = {
+      "db": 'bl01_db',
+      "pretty": True,
+      "epoch": 'ms',
+      "q": 'SELECT first(accel_y) from "bl01_db"."autogen"."meas_1"'
+    }
+    r = requests.get('http://163.221.68.206:8086/query', params=payload)
+    first = json.loads(r.text)
+    first_time_int = first["results"][0]["series"][0]["values"][0][0]
+
+    return str(first_time_int) + ',' + str(last_time_int)
+  elif influx_ip == '163.221.68.191':
+    DB = 'IFoT-GW2'
+    query = "SELECT first(accel_y) from \"autogen\".\"" + DB + "-Meas\""
+    payload = {
+    "db": DB,
+    "pretty": True,
+    "epoch": 'ms',
+    "q": query
+    }
+    #curl -G 'http://163.221.68.191:8086/query?db=IFoT-GW1' --data-urlencode 'q=SELECT last(accel_y) from "autogen"."IFoT-GW1-Meas"'
+    r = requests.get('http://163.221.68.191:8086/query?', params=payload)
+    #FOR SOPICHA
+    print(r.text)
+    first = json.loads(r.text)
+    first_t = first["results"][0]["series"][0]["values"][0][0]
+
+    #EARLIEST-LATEST date getter
+    query = "SELECT last(accel_y) from \"autogen\".\"" + DB + "-Meas\""
+    payload = {
+    "db": DB,
+    "pretty": True,
+    "epoch": 'ms',
+    "q": query
+    }
+    #curl -G 'http://163.221.68.191:8086/query?db=IFoT-GW1' --data-urlencode 'q=SELECT last(accel_y) from "autogen"."IFoT-GW1-Meas"'
+    r = requests.get('http://163.221.68.191:8086/query?', params=payload)
+    last = json.loads(r.text)
+    last_t = last["results"][0]["series"][0]["values"][0][0]
+    return str(first_t) + ',' + str(last_t)
+
+
+#TODO: Breakdown the time/duration and then send the unix times to the various nodes.
+#
+@api.route('/heatmap_trigger', methods=['GET', 'POST'])#, 'OPTIONS'])
+def heatmap_trigger():
+  req = request.get_json(force=True)
+  start_time = req['start_time']
+  end_time = req['end_time']
+  print(req)
+
+  # query = "SELECT * FROM \"bl01_db\".\"autogen\".\"meas_1\" WHERE \"accel_z\"=-25.4"
+
+  query = "SELECT * from \"autogen\".\"meas_1\" WHERE time > " + \
+          str(int(start_time)) + " and time < " + \
+          str(int(end_time)) + \
+          " and \"bt_address\"=" + "\'FA114A6A871C\'"
+
+  payload = {
+    "db": 'bl01_db',
+    "pretty": True,
+    "epoch": 'ms',
+    "q": query
+  }
+  r = requests.get('http://163.221.68.206:8086/query', params=payload)
+  return r.text
