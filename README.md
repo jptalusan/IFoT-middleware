@@ -1,3 +1,10 @@
+This is the git for the master/service network and slave nodes of the IFoT platform.  
+Right now this works in conjunction with the service broker since only API accessible via POST are the contents of this.  
+Service Broker: https://github.com/linusmotu/IFoT-Service_Broker  
+
+To be added:  
+Resource broker  
+-----
 Please use the distributed/wip branch for Pi and distributed/nuc-wip branch for nucs.  
 However I still need to updated the nuc-wip branch to include the heatmap.  
 
