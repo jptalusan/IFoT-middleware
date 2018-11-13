@@ -1,0 +1,104 @@
+<svg x="0" y="0" width="100%" height="100%" viewBox="0 0 3671 2603" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+style="display: block;margin-left: auto;margin-right: auto;">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+
+.g0_1{
+fill: none;
+stroke: #000000;
+stroke-width: 15.277778;
+stroke-linecap: butt;
+stroke-linejoin: miter;
+}
+.g1_1{
+fill: none;
+stroke: #FFFFFF;
+stroke-width: 15.277778;
+stroke-linecap: butt;
+stroke-linejoin: miter;
+}
+.g2_1{
+fill: none;
+stroke: #FFFFFF;
+stroke-width: 21.38889;
+stroke-linecap: butt;
+stroke-linejoin: miter;
+}
+.sensor:hover {
+    stroke-width: 71;
+}
+
+]]>
+  </style>
+    <radialGradient id="exampleGradient" > 
+      <stop offset="10%" stop-color="#800000"/> 
+      <stop offset="40%" stop-color="#FFA500"/>
+      <stop offset="85%" stop-color="#006400"/> 
+      <stop offset="100%" stop-color="#B0E0E6"/> 
+    </radialGradient>
+      
+ </defs>
+    
+ <g class="layer">
+  <title>Layer 1</title>
+  <path d="m0,0l0,2603l3671,0l0,-2603l-3671,0z" fill="#FFFFFF" id="svg_1"/>
+  <path class="g0_1" d="m2017.9,2596l-1807.7,0l0,-893.5l1807.7,0l0,893.5zm-1260.1,-1080.8l-566,0l0,-667.8l566,0l0,667.8zm2328.1,-640.4l-882.2,0l0,-867.2l882.2,0l0,867.2zm-2016.5,640.4l-311.6,0l0,-667.8l311.6,0l0,667.8zm948.5,0l-369.8,0l0,-667.8l369.8,0l0,667.8zm-656.3,0l-292.2,0l0,-667.8l292.2,0l0,667.8zm286.5,0l-286.5,0l0,-667.8l286.5,0l0,667.8zm369.8,-411.4l185.8,0m0,-229l0,297.6m225.3,-297.6l0,297.6m-226.8,-7.2l77.5,0m1017,0l-867.7,0m-411.1,537.3l193,0" fill="black" id="svg_2"/>
+  <path class="g1_1" d="m522.4,1702.5l109.1,0m1016.6,0l109.1,0" id="svg_3"/>
+  <path class="g0_1" d="m7.6,1702.5l202.6,0m-202.6,-187.3l202.6,0m-202.6,-7.6l0,202.5m2195.8,-336l0,862.8m0.3,-854.9l193,0m160.4,-7.9l0,862.8m-348.3,-8l1454.7,0m-1102.7,-277l219.6,0m-224.1,-569.9l219.5,0m0,98.4l0,-106.3m4.6,584.8l0,-119.7m0,-135.7l0,-90.4m883.1,615.8l0,-854.8m-248.6,564.5l0,-578.9m-7.6,578.9l256.2,0m-124.3,-478.5l0,366.8m47.4,-459.5l84.5,0m-259.2,0l67.4,0m-188.9,44.8l84.4,0m-83.9,472.6l82.4,0m-76.6,-475.2c0,0 -184.5,233.5 0,478.1" id="svg_4"/>
+  <path class="g1_1" d="m1839.7,1515.2l73.6,0m-466.5,0l73.6,0m-278.3,0l73.6,0m-449.5,0l73.6,0m-273,0l73.6,0" id="svg_5"/>
+  <path class="g2_1" d="m2313,874.8l107.5,0" id="svg_6"/>
+  <path class="g0_1" d="m3404.2,867.4l0,306m0,-298.6l-318.3,0m-232.5,290.4l0,-289.4m550.8,289.4l266.9,0" id="svg_7"/>
+ </g>
+    
+<text id="title" x="100" y="100" font-family="Verdana" font-size="35" fill="blue">FEATURE_CHOICE</text>
+ <g class="layer">
+  <title>HEATMAPS</title>
+  <rect class="room" height="667.85714" id="yasumoto" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" width="557.14285" x="195.07141" y="848.78557" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.0;fill:rgb(255,0, 0);"/>
+  <rect class="room" height="671.42857" id="arakawa" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" width="296.42857" x="773.64284" y="848.78557" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.0;fill:rgb(255,0, 0);"/>
+  <rect class="room" height="667.85714" id="fujimoto" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" width="296.42857" x="1062.92855" y="848.78557" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.0;fill:rgb(255,0, 0);"/>
+  <rect class="room" height="671.42857" id="secretary" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" width="271.42857" x="1373.64283" y="848.78557" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.0;fill:rgb(255,0, 0);"/>
+  <rect class="room" height="671.42857" id="suwa" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" width="364.28571" x="1648.64283" y="852.357" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.0;fill:rgb(255,0, 0);"/>
+     
+<g class="container">
+  <circle class="sensor" cx="516.49998" cy="1927.35699" id="sensor10" r="194.47076" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.5;fill:rgb(255,0, 0);"/>
+    <text x="516.49998" y="1927.35699" font-family="Verdana" font-size="35" fill="blue" style="transform:translate(-10px, 10px)">X</text>
+</g>
+<g class="container">
+  <circle class="sensor" cx="1112.92857" cy="1923.78577" id="sensor9" r="194.4707" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.5;fill:url(#exampleGradient)"/>
+    <text x="1112.92857" y="1923.78577" font-family="Verdana" font-size="35" fill="blue" style="transform:translate(-10px, 10px)">X</text>
+</g>
+<g class="container">
+  <circle class="sensor" cx="1759.35713" cy="2288.07149" id="sensor7" r="194.4707" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.5;fill:url(#exampleGradient)"/>
+    <text x="1759.35713" y="2288.07149" font-family="Verdana" font-size="35" fill="blue" style="transform:translate(-10px, 10px)">X</text>
+</g>
+<g class="container">
+  <circle class="sensor" cx="1548.64285" cy="2023.78577" id="sensor6" r="194.47064" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.5;fill:url(#exampleGradient)"/>
+    <text x="1548.64285" y="2023.78577" font-family="Verdana" font-size="35" fill="blue" style="transform:translate(-10px, 10px)">X</text>
+</g>
+<g class="container">
+  <circle class="sensor" cx="909.35716" cy="2320.21435" id="sensor8" r="194.4707" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.5;fill:url(#exampleGradient)"/>
+    <text x="909.35716" y="2320.21435" font-family="Verdana" font-size="35" fill="blue" style="transform:translate(-10px, 10px)">X</text>
+</g>
+<g class="container">
+  <circle class="sensor" cx="2734.3571" cy="727.35718" id="sensor4" r="194.4707" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.5;fill:url(#exampleGradient)"/>
+    <text x="2734.3571" y="727.35718" font-family="Verdana" font-size="35" fill="blue" style="transform:translate(-10px, 10px)">X</text>
+</g>
+<g class="container">
+  <circle class="sensor" cx="3098.64286" cy="320.21438" id="sensor3" r="194.4707" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.5;fill:url(#exampleGradient)"/>
+    <text x="3098.64286" y="320.21438" font-family="Verdana" font-size="35" fill="blue" style="transform:translate(-10px, 10px)">X</text>
+</g>
+<g class="container">
+  <circle class="sensor" cx="2405.78569" cy="198.7858" id="sensor2" r="194.4707" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.5;fill:url(#exampleGradient)"/>
+    <text x="2405.78569" y="198.7858" font-family="Verdana" font-size="35" fill="blue" style="transform:translate(-10px, 10px)">X</text>
+</g>
+<g class="container">
+  <circle class="sensor" cx="2559.3571" cy="338.07153" id="sensor1" r="194.4707" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.5;fill:url(#exampleGradient)"/>
+    <text x="2559.3571" y="338.07153" font-family="Verdana" font-size="35" fill="blue" style="transform:translate(-10px, 10px)">X</text>
+</g>
+<g class="container">
+    <circle class="sensor" cx="2684.3571" cy="202.35724" id="sensor5" r="194.4707" stroke-dasharray="null" stroke-linecap="null" stroke-linejoin="null" stroke-width="null" style="stroke-width:3;stroke:rgb(0,0,0);opacity: 0.5;fill:url(#exampleGradient)"/>
+    <text x="2684.3571" y="202.35724" font-family="Verdana" font-size="35" fill="blue" style="transform:translate(-10px, 10px)">X</text>
+</g>
+ </g>
+</svg>

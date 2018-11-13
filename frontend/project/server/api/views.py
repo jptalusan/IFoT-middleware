@@ -596,8 +596,26 @@ def nuts2_classify():
     else:
       return jsonify({'status':'error'})
 
-@api.route('/dt_get', methods=['GET', 'POST'])#, 'OPTIONS'])
-def dt_get():
+def convertIntToLocalTime(input):
+    # METHOD 1: Hardcode zones:
+    # from_zone = tz.gettz('UTC')
+    # to_zone = tz.gettz('America/New_York')
+
+    # METHOD 2: Auto-detect zones:
+    from_zone = tz.tzutc()
+    to_zone = tz.tzlocal()
+
+    # 1537323289425,1533650065704
+    # 1540263839999000064
+    ts = int(input)
+    ts /= 1000
+
+    utc = datetime.datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+    local = datetime.datetime.strptime(utc, '%Y-%m-%d %H:%M:%S')#.replace(tzinfo=from_zone).astimezone(to_zone)
+    return local.strftime('%Y-%m-%d %H:%M:%S')
+
+@api.route('/dt_get_readable', methods=['GET', 'POST'])#, 'OPTIONS'])
+def dt_get_readable():
   req = request.get_json(force=True)
   influx_ip = req['influx_ip']
 
@@ -622,8 +640,8 @@ def dt_get():
     r = requests.get('http://163.221.68.206:8086/query', params=payload)
     first = json.loads(r.text)
     first_time_int = first["results"][0]["series"][0]["values"][0][0]
-
-    return str(first_time_int) + ',' + str(last_time_int)
+    return str(convertIntToLocalTime(first_time_int)) + ';' + str(convertIntToLocalTime(last_time_int))
+    # return str(first_time_int) + ',' + str(last_time_int)
   elif influx_ip == '163.221.68.191':
     DB = 'IFoT-GW2'
     query = "SELECT first(accel_y) from \"autogen\".\"" + DB + "-Meas\""
@@ -652,30 +670,109 @@ def dt_get():
     r = requests.get('http://163.221.68.191:8086/query?', params=payload)
     last = json.loads(r.text)
     last_t = last["results"][0]["series"][0]["values"][0][0]
-    return str(first_t) + ',' + str(last_t)
+    return str(convertIntToLocalTime(first_t)) + ';' + str(convertIntToLocalTime(last_t))
+    # return str(first_t) + ',' + str(last_t)
 
-
-#TODO: Breakdown the time/duration and then send the unix times to the various nodes.
-#
-@api.route('/heatmap_trigger', methods=['GET', 'POST'])#, 'OPTIONS'])
-def heatmap_trigger():
+@api.route('/dt_get', methods=['GET', 'POST'])#, 'OPTIONS'])
+def dt_get():
   req = request.get_json(force=True)
-  start_time = req['start_time']
-  end_time = req['end_time']
-  print(req)
+  influx_ip = req['influx_ip']
 
-  # query = "SELECT * FROM \"bl01_db\".\"autogen\".\"meas_1\" WHERE \"accel_z\"=-25.4"
+  if influx_ip == '163.221.68.206':
+    headers: { 'Accept': 'application/csv' }
+    payload = {
+      "db": 'bl01_db',
+      "pretty": True,
+      "epoch": 'ms',
+      "q": 'SELECT last(accel_y) from "bl01_db"."autogen"."meas_1"'
+    }
+    r = requests.get('http://' + influx_ip +':8086/query', params=payload)
+    last = json.loads(r.text)
+    last_time_int = last["results"][0]["series"][0]["values"][0][0]
 
-  query = "SELECT * from \"autogen\".\"meas_1\" WHERE time > " + \
-          str(int(start_time)) + " and time < " + \
-          str(int(end_time)) + \
-          " and \"bt_address\"=" + "\'FA114A6A871C\'"
-
-  payload = {
-    "db": 'bl01_db',
+    payload = {
+      "db": 'bl01_db',
+      "pretty": True,
+      "epoch": 'ms',
+      "q": 'SELECT first(accel_y) from "bl01_db"."autogen"."meas_1"'
+    }
+    r = requests.get('http://163.221.68.206:8086/query', params=payload)
+    first = json.loads(r.text)
+    first_time_int = first["results"][0]["series"][0]["values"][0][0]
+    # return str(convertIntToLocalTime(first_time_int)) + ',' + str(convertIntToLocalTime(last_time_int))
+    return str(first_time_int) + ';' + str(last_time_int)
+  elif influx_ip == '163.221.68.191':
+    DB = 'IFoT-GW2'
+    query = "SELECT first(accel_y) from \"autogen\".\"" + DB + "-Meas\""
+    payload = {
+    "db": DB,
     "pretty": True,
     "epoch": 'ms',
     "q": query
-  }
-  r = requests.get('http://163.221.68.206:8086/query', params=payload)
-  return r.text
+    }
+    #curl -G 'http://163.221.68.191:8086/query?db=IFoT-GW1' --data-urlencode 'q=SELECT last(accel_y) from "autogen"."IFoT-GW1-Meas"'
+    r = requests.get('http://163.221.68.191:8086/query?', params=payload)
+    #FOR SOPICHA
+    print(r.text)
+    first = json.loads(r.text)
+    first_t = first["results"][0]["series"][0]["values"][0][0]
+
+    #EARLIEST-LATEST date getter
+    query = "SELECT last(accel_y) from \"autogen\".\"" + DB + "-Meas\""
+    payload = {
+    "db": DB,
+    "pretty": True,
+    "epoch": 'ms',
+    "q": query
+    }
+    #curl -G 'http://163.221.68.191:8086/query?db=IFoT-GW1' --data-urlencode 'q=SELECT last(accel_y) from "autogen"."IFoT-GW1-Meas"'
+    r = requests.get('http://163.221.68.191:8086/query?', params=payload)
+    last = json.loads(r.text)
+    last_t = last["results"][0]["series"][0]["values"][0][0]
+    # return str(convertIntToLocalTime(first_t)) + ',' + str(convertIntToLocalTime(last_t))
+    return str(first_t) + ';' + str(last_t)
+
+def convert_utc_to_epoch(timestamp_string):
+    '''Use this function to convert utc to epoch'''
+    timestamp = datetime.datetime.strptime(timestamp_string, '%Y-%m-%d %H:%M:%S')
+    epoch = int(calendar.timegm(timestamp.utctimetuple()))
+    print(epoch)
+    return int(epoch) * 1000
+
+def enqueue_heatmap_queries(start_time, end_time, feature, mp_q):
+  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+    q = Queue('default')
+
+
+    mp_q.put(response_object)
+
+#TODO: Breakdown the time/duration and then send the unix times to the various nodes.
+@api.route('/heatmap_trigger', methods=['POST'])#, 'OPTIONS'])
+def heatmap_trigger():
+  req = request.get_json(force=True)
+  influx_ip = req['influx_ip']
+  start_time = req['start_time']
+  end_time = req['end_time']
+  feature = req['feature']
+  
+  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+    q = Queue('default')
+    json_response = {}
+    json_response['query_ID'] = 'unique_ID'
+    json_response['query_received'] = get_current_time()
+
+    task = q.enqueue('HEATMAP_Tasks.readSVG', influx_ip, start_time, end_time, feature)
+    params = str(start_time) + " to " + str(end_time) + " of feature: " + feature
+    response_object = {
+      'status': 'success',
+      'unique_ID': 'HEATMAP READ SVG',
+      'params': params,
+      'data': {
+        'task_id': task.get_id()
+      }
+    }
+    json_response['response_object'] = response_object
+
+    return jsonify(json_response), 202
+
+  # return str(start_time) + ',' + str(end_time) + ',' + feature
