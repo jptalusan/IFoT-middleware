@@ -3,12 +3,12 @@ from flask import send_from_directory, url_for, redirect
 from werkzeug.utils import secure_filename
 from ..models.models import Node
 from ..forms.upload_form import UploadForm
-from rq import Queue, Connection
 import redis
-import os
-import json
+from rq import Queue, Connection
 from rq.registry import StartedJobRegistry, FinishedJobRegistry
-import urllib.request, json 
+
+import json
+import urllib.request
 import requests
 
 from bs4 import BeautifulSoup
@@ -18,136 +18,36 @@ from ..forms.upload_form import TextForm, Nuts2Form
 from ..main import funcs
 import numpy as np
 
+import os
+import csv
 import time
 import datetime
 from dateutil import tz
 
 import multiprocessing
 
-NODE_COUNT = '_node_count'
-DONE_NODE_COUNT = '_done_node_count'
+from ..api import metas, utils
+from ..services import vas
+from ..services import actv_reg
+from ..services.defs import *
 
 api = Blueprint('api', __name__,)
+
+feat_name_list = [
+    "acc_x", "acc_y", "acc_z", "acc_comp",
+    "lacc_x", "lacc_y", "lacc_z", "lacc_comp",
+    "gra_x", "gra_y", "gra_z", "gra_comp",
+    "gyr_x", "gyr_y", "gyr_z", "gyr_comp",
+    "mag_x", "mag_y", "mag_z", "mag_comp",
+    "ori_w", "ori_x", "ori_y", "ori_z", "pre"]
 
 @api.route('/', methods=['GET'])
 def home():
   return "{'hello':'world'}"
 
-def get_all_finished_tasks_from(queue_name):
-    with Connection(redis.from_url(current_app.config['REDIS_URL'])):
-      # q = Queue(queue_name)
-      f_registry = FinishedJobRegistry(queue_name)
-      data = {}
-
-      finished_job_ids = f_registry.get_job_ids()
-      data['status'] = 'success'
-      data['queue_name'] = queue_name
-      data['finished'] = {}
-
-      data['finished']['count'] = len(finished_job_ids)
-      data['finished']['finished_tasks_ids'] = []
-      for finished_job_id in finished_job_ids:
-        data['finished']['finished_tasks_ids'].append(finished_job_id)
-
-      return jsonify(data)
-
-def get_all_queued_tasks_from(queue_name):
-    with Connection(redis.from_url(current_app.config['REDIS_URL'])):
-      q = Queue(queue_name)
-      queued_job_ids = q.job_ids
-      data = {}
-
-      data['status'] = 'success'
-      data['queue_name'] = queue_name
-      data['queued'] = {}
-
-      data['queued']['count'] = len(queued_job_ids)
-      data['queued']['queued_tasks_ids'] = []
-      for queued_job_id in queued_job_ids:
-        data['queued']['queued_tasks_ids'].append(queued_job_id)
-
-      return jsonify(data)
-
-def get_all_running_tasks_from(queue_name):
-    with Connection(redis.from_url(current_app.config['REDIS_URL'])):
-      # q = Queue(queue_name)
-      registry = StartedJobRegistry(queue_name)
-      data = {}
-
-      running_job_ids = registry.get_job_ids()
-      data['status'] = 'success'
-      data['queue_name'] = queue_name
-      data['running'] = {}
-
-      data['running']['count'] = len(running_job_ids)
-      data['running']['running_tasks_ids'] = []
-      for running_job_id in running_job_ids:
-        data['running']['running_tasks_ids'].append(running_job_id)
-
-      return jsonify(data)
-
-def getalltasksID():
-  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
-    q = Queue('default')
-    registry = StartedJobRegistry('default')
-    f_registry = FinishedJobRegistry('default')
-  if q:
-    data = {}
-    running_job_ids = registry.get_job_ids()
-    expired_job_ids = registry.get_expired_job_ids()
-    finished_job_ids = f_registry.get_job_ids()
-    queued_job_ids = q.job_ids
-    data['status'] = 'success'
-    data['queue_name'] = 'default' #Make dynamic or parameterized?
-    data['running'] = {}
-    data['queued'] = {}
-    data['expired'] = {}
-    data['finished'] = {}
-
-    data['running']['count'] = len(running_job_ids)
-    data['running']['running_tasks_ids'] = []
-    for running_job_id in running_job_ids:
-      data['running']['running_tasks_ids'].append(running_job_id)
-
-    data['queued']['count'] = len(queued_job_ids)
-    data['queued']['queued_tasks_ids'] = []
-    for queued_job_id in queued_job_ids:
-      data['queued']['queued_tasks_ids'].append(queued_job_id)
-
-    data['expired']['count'] = len(expired_job_ids)
-    data['expired']['expired_tasks_ids'] = []
-    for expired_job_id in expired_job_ids:
-      data['expired']['expired_tasks_ids'].append(expired_job_id)
-
-    data['finished']['count'] = len(finished_job_ids)
-    data['finished']['finished_tasks_ids'] = []
-    for finished_job_id in finished_job_ids:
-      data['finished']['finished_tasks_ids'].append(finished_job_id)
-
-    return jsonify(data)
-  else:
-    return jsonify({'status': 'error'})
-
 @api.route('/getallqueues', methods=['POST'])
 def getallqeueues():
-    return getalltasksID()
-
-def get_task_status(queue, task_id):
-  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
-    q = Queue(queue)
-    task = q.fetch_job(task_id)
-  if task is not None:
-    response_object = {
-      'status': 'success',
-      'data': {
-          'task_id': task.get_id(),
-          'task_status': task.get_status(),
-          'task_result': task.result,
-      }
-    }
-  else:
-    response_object = {'status': 'error, task is None'}
-  return jsonify(response_object)
+    return jsonify(metas.get_all_task_ids(current_app.config))
 
 @api.route('/getqueuecount', methods=['POST'])
 def getqueuecount():
@@ -162,28 +62,29 @@ def getqueuecount():
 def checkqueue():
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
     q = Queue()
-  if q:
-    data = {}
-    data['status'] = 'success'
-    data['jobs_count'] = len(q)
-    data['jobs'] = []
-    for job_id in q.job_ids:
-      job = q.fetch_job(job_id)
-      task_status = job.get_status()
-      task_result = job.result
-      task_obj = {'task_id': job_id, \
-                  'task_status': task_status, \
-                  'task_result': task_result}
-      data['jobs'].append(task_obj)
-    return json.dumps({'response': data})
-  else:
-    return jsonify({'status': 'error'})
+    if q:
+      data = {}
+      data['status'] = 'success'
+      data['jobs_count'] = len(q)
+      data['jobs'] = []
+      for job_id in q.job_ids:
+        job = q.fetch_job(job_id)
+        task_status = job.get_status()
+        task_result = job.result
+        task_obj = {'task_id': job_id, \
+                    'task_status': task_status, \
+                    'task_result': task_result}
+        data['jobs'].append(task_obj)
+
+      return json.dumps({'response': data})
+
+  return jsonify({'status': 'error'})
 
 #https://stackoverflow.com/questions/15182696/multiple-parameters-in-in-flask-approute
 
 @api.route('/task/<queue>/<task_id>', methods=['GET','POST'])
 def get_status(queue = None, task_id = None):
-  return get_task_status(queue, task_id)
+  return jsonify(metas.get_task_status(queue, task_id, current_app.config))
 
 
 @api.route('/queue_count', methods=['GET', 'POST'])#, 'OPTIONS'])
@@ -202,95 +103,19 @@ def queue_count():
 
 @api.route('/getmetas', methods=['GET', 'POST'])
 def getmetas():
-  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
-    q = Queue('default')
-    registry = StartedJobRegistry('default')
-    f_registry = FinishedJobRegistry('default')
+  return jsonify(metas.get_meta_info(current_app.config))
 
-    all_task_ids = getalltasksID()
-    # if request.method == 'GET':
-    response_text = all_task_ids.get_data(as_text=True)
+@api.route('/get_exec_times', methods=['GET', 'POST'])
+def get_exec_times():
+  data = {}
+  # Get the execution timing info
+  data['exec_time_logs'] = metas.get_all_exec_time_logs()
+  return jsonify(data)
 
-    response_json = all_task_ids.get_json()
-    # data = json.load(response_json)
-    running_tasks_ids = response_json["running"]["running_tasks_ids"]
-    finished_tasks_ids = response_json["finished"]["finished_tasks_ids"]
-    queued_tasks_ids = response_json["queued"]["queued_tasks_ids"]
-
-    data = {}
-
-    data['running_tasks'] = []
-    for task_id in running_tasks_ids:
-      d = {}
-      job = q.fetch_job(task_id)
-      job.refresh()
-      job.meta['result'] = 'null'
-      d[task_id] = job.meta
-      data['running_tasks'].append(d)
-
-    data['queued_tasks'] = []
-    for task_id in queued_tasks_ids:
-      d = {}
-      job = q.fetch_job(task_id)
-      job.refresh()
-      job.meta['result'] = 'null'
-      d[task_id] = job.meta
-      data['queued_tasks'].append(d)
-
-    data['finished_tasks'] = []
-    for task_id in finished_tasks_ids:
-      d = {}
-      job = q.fetch_job(task_id)
-      job.refresh()
-      job.meta['result'] = job.result
-      d[task_id] = job.meta
-      data['finished_tasks'].append(d)
-
-  with Connection(redis.from_url(current_app.config['REDIS_URL'])):
-    q = Queue('aggregator')
-
-    agg_fin_task_ids = get_all_finished_tasks_from('aggregator')
-    temp = agg_fin_task_ids.get_json()
-    agg_fin_tasks_ids = temp["finished"]["finished_tasks_ids"]
-
-    agg_que_task_ids = get_all_queued_tasks_from('aggregator')
-    temp = agg_que_task_ids.get_json()
-    agg_que_tasks_ids = temp["queued"]["queued_tasks_ids"]
-
-    agg_run_task_ids = get_all_running_tasks_from('aggregator')
-    temp = agg_run_task_ids.get_json()
-    agg_run_tasks_ids = temp["running"]["running_tasks_ids"]
-
-    data['agg_finished_tasks'] = []
-    for task_id in agg_fin_tasks_ids:
-      d = {}
-      job = q.fetch_job(task_id)
-      if job is not None:
-        job.refresh()
-        job.meta['result'] = job.result
-        d[task_id] = job.meta
-        data['agg_finished_tasks'].append(d)
-
-    data['agg_queued_tasks'] = []
-    for task_id in agg_que_tasks_ids:
-      d = {}
-      job = q.fetch_job(task_id)
-      if job is not None:
-        job.refresh()
-        job.meta['result'] = job.result
-        d[task_id] = job.meta
-        data['agg_queued_tasks'].append(d)
-
-    data['agg_running_tasks'] = []
-    for task_id in agg_run_tasks_ids:
-      d = {}
-      job = q.fetch_job(task_id)
-      if job is not None:
-        job.refresh()
-        job.meta['result'] = job.result
-        d[task_id] = job.meta
-        data['agg_running_tasks'].append(d)
-
+@api.route('/get_exec_time/<unique_id>', methods=['GET', 'POST'])
+def get_exec_time(unique_id):
+  data = {}
+  data['exec_time_logs'] = { unique_id : metas.get_exec_time_log(unique_id) }
   return jsonify(data)
 
 @api.route('/set_redis', methods=['GET','POST'])
@@ -340,16 +165,6 @@ def flush_redis():
         j.cleanup(0)
 
   return "Flushed"
-'''
-  try:
-    r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
-    r.set("msg:hello", "Hello Redis!!!")
-    output = r.flushall()
-    return "Flushed"
-  except Exception as e:
-    print(e)
-    return e
-'''
 
 def fix_labels(label):
   #Labels
@@ -376,33 +191,6 @@ def fix_labels(label):
 TARGET_NAMES = ["still", "walk",  "run",  "bike",  "car",  "bus",  "train",  "subway"]
 NUM_CLASSES = len(TARGET_NAMES)
 window_size = 100
-
-def get_current_time():
-  HERE = tz.gettz('Asia/Tokyo')
-  UTC = tz.gettz('UTC')
-
-  ts = datetime.datetime.utcnow().replace(tzinfo=UTC).astimezone(HERE)
-  # local_time = ts.strftime('%Y-%m-%d %H:%M:%S.%f %Z%z')
-  local_time = ts.strftime('%Y-%m-%d %H:%M:%S.%f %Z')[:-3]
-  return local_time
-
-def intializeQuery(total_nodes):
-  r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
-
-  u_ID = funcs.generate_unique_ID()
-  funcs.setRedisKV(r, u_ID, 'ongoing')
-  funcs.setRedisKV(r, u_ID + NODE_COUNT, total_nodes)
-  funcs.setRedisKV(r, u_ID + DONE_NODE_COUNT, 0)
-
-  return u_ID
-
-feat_name_list = [
-    "acc_x", "acc_y", "acc_z", "acc_comp",
-    "lacc_x", "lacc_y", "lacc_z", "lacc_comp",
-    "gra_x", "gra_y", "gra_z", "gra_comp",
-    "gyr_x", "gyr_y", "gyr_z", "gyr_comp",
-    "mag_x", "mag_y", "mag_z", "mag_comp",
-    "ori_w", "ori_x", "ori_y", "ori_z", "pre"]
 
 def enqueue_npy_files(unique_ID, model_type, chunk_list, mp_q):
   label_list = []
@@ -466,7 +254,7 @@ def nuts_classify():
         #Maybe i should just divide the chunks, no! haha 
         return jsonify({'status':'node_count is greater than chunk_count'}), 616
 
-      unique_ID = intializeQuery(node_count)
+      unique_ID = utils.initialize_query(node_count)
       total_chunks = 200 #hard coded because i only saved 15 chunks in the server
       #Now need to make everything into lists
       chunks = []
@@ -501,7 +289,7 @@ def nuts_classify():
       json_response['tasks'] = []
       json_response['query_ID'] = unique_ID
       #json_response['query_received'] = int(time.time())
-      json_response['query_received'] = get_current_time()
+      json_response['query_received'] = utils.get_current_time()
 
       out_q = multiprocessing.Queue()
       procs = []
@@ -540,7 +328,7 @@ def nuts2_classify():
         #Maybe i should just divide the chunks, no! haha 
         return jsonify({'status':'node_count is greater than chunk_count'}), 616
 
-      unique_ID = intializeQuery(node_count)
+      unique_ID = utils.initialize_query(node_count)
       total_chunks = 200 #hard coded because i only saved 15 chunks in the server
       #Now need to make everything into lists
       chunks = []
@@ -575,7 +363,7 @@ def nuts2_classify():
       json_response['tasks'] = []
       json_response['query_ID'] = unique_ID
       #json_response['query_received'] = int(time.time())
-      json_response['query_received'] = get_current_time()
+      json_response['query_received'] = utils.get_current_time()
 
       out_q = multiprocessing.Queue()
       procs = []
@@ -754,12 +542,12 @@ def heatmap_trigger():
   start_time = req['start_time']
   end_time = req['end_time']
   feature = req['feature']
-  
+
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
     q = Queue('default')
     json_response = {}
     json_response['query_ID'] = 'unique_ID'
-    json_response['query_received'] = get_current_time()
+    json_response['query_received'] = utils.get_current_time()
 
     task = q.enqueue('HEATMAP_Tasks.readSVG', influx_ip, start_time, end_time, feature)
     params = str(start_time) + " to " + str(end_time) + " of feature: " + feature
@@ -775,4 +563,132 @@ def heatmap_trigger():
 
     return jsonify(json_response), 202
 
-  # return str(start_time) + ',' + str(end_time) + ',' + feature
+@api.route('/get_raw_labels', methods=['GET'])#, 'OPTIONS'])
+def get_raw_labels():
+  resp = ""
+  try:
+    f = open("static/raw_labels.csv", "r")
+    resp = {"status" : "success", "contents" : f.read()}
+
+  except Exception as e:
+    resp = {"status" : "failed", "error" : str(e)}
+
+  return jsonify(resp), 200
+
+@api.route('/get_training_labels', methods=['GET'])#, 'OPTIONS'])
+def get_training_labels():
+  labels = []
+
+  try:
+    # See if we have any files cached
+    if os.path.isfile("static/raw_labels-cached.json"):
+
+      cached_last_mod = os.stat("static/raw_labels-cached.json").st_mtime
+      ref_last_mod =  os.stat("static/raw_labels.csv").st_mtime
+
+      # If cached file is newer than the reference file, we can
+      #  still reuse it
+      if cached_last_mod > ref_last_mod:
+        resp = ""
+        with open("static/raw_labels-cached.json", "r") as f:
+          resp = f.read()
+
+        return resp, 200
+
+    fmt_date = "%Y-%m-%d %H:%M.%S"
+    date_convert = lambda d: datetime.datetime.strptime(d, fmt_date) - \
+                             datetime.timedelta(hours=9)
+
+    with open("static/raw_labels.csv", newline='') as csvf:
+      reader =  csv.DictReader(csvf)
+      activity_list = []
+      for row in reader:
+        if not row['Activity'] in activity_list:
+          activity_list.append(row['Activity'])
+
+        proper_row = {
+          "Activity" : row['Activity'],
+          "ActivityId" : activity_list.index(row["Activity"]),
+          "End" : date_convert(row['End']).timestamp(),
+          "Start" : date_convert(row['Start']).timestamp(),
+        }
+        labels.append(proper_row)
+
+    # Cache the file
+    with open("static/raw_labels-cached.json", "w") as f:
+      f.write(json.dumps(labels))
+
+  except Exception as e:
+    labels.append({"status" : "failed", "error" : str(e)})
+
+  return json.dumps(labels), 200
+
+@api.route('/uploads/<filename>')
+def uploaded_file(filename):
+  return send_from_directory("uploads", filename)
+
+@api.route('/upload_classifier', methods=['POST'])#, 'OPTIONS'])
+def upload_classifier():
+  if 'file' not in request.files:
+    return "File not found", 400
+
+  file = request.files['file']
+  if file.filename == '':
+    return "No filename", 400
+
+  if file:
+    filename = secure_filename(file.filename)
+    file.save(os.path.join("uploads", filename))
+
+    # TODO Move to a separate thread?
+    # Notify other S-Workers of the new classifier file
+    last_changed = os.stat("uploads/{}".format(filename)).st_mtime
+    unique_id = '{}'.format( int(datetime.datetime.now().timestamp()) )
+    download_url = "http://163.221.68.242:5001{}".format( url_for("api.uploaded_file", filename=filename) )
+    task_ids = []
+    for seq_id in range(0, 16):
+      with Connection(redis.from_url(current_app.config['REDIS_URL'])):
+        q = Queue('default')
+
+        task = q.enqueue('ActivityRecog_Tasks.download_classifier',
+                            unique_id, seq_id,
+                            download_url,
+                            last_changed )
+
+        task_ids.append( task.get_id() )
+
+    return "Success: {}".format(url_for("api.uploaded_file",
+                                        filename=filename)), 200
+
+  return "Failed", 404
+
+##
+##  IFoT Middleware Service APIs
+##  - Add APIs for new middleware services here
+##  - However, all actual service code should be in the '../services' folder
+##
+
+@api.route('/actv_reg/classify', methods=['POST'])
+def activity_reg_classify():
+  return call_service(actv_reg.classify, request)
+
+@api.route('/actv_reg/train', methods=['POST'])
+def activity_reg_train():
+  return call_service(actv_reg.train, request)
+
+@api.route('/vas/get_average_speeds', methods=['GET'])
+def get_average_speeds():
+  return call_service(vas.get_average_speeds, request)
+
+def call_service(service_func, request):
+  collect_start_time = utils.get_redis_server_time()
+
+  api_resp = service_func(request)
+
+  # Log execution time info to redis
+  unique_id = api_resp['response_object']['unique_ID']
+  metas.add_exec_time_info(unique_id, "collection", collect_start_time, utils.get_redis_server_time())
+
+  return jsonify(api_resp), 202
+
+

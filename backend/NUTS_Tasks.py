@@ -135,7 +135,7 @@ def feat_Extract_And_Classify(feat_list, test_list, model_type, unique_ID):
     with Connection(redis_connection):
       #Maybe add a differnetname?
       q = Queue('aggregator')
-      t = q.enqueue('tasks.aggregate_nuts_data', unique_ID, depends_on=job.id) #job is this current job
+      t = q.enqueue('tasks.aggregate_data', unique_ID, depends_on=job.id) #job is this current job
 
   return { 'sequence_ID': unique_ID, 'output': output, 'outsize': len(output), 'model_type': model_type}
 
