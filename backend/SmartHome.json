@@ -1,0 +1,12 @@
+{
+    "nodeList": ["163.221.68.211", "163.221.68.245", "163.221.68.246"],
+    "numClass": 2,
+    "numTrees": 3,
+    "maxDepth": 5,
+    "featureTrials": 30,
+    "thresholdTrials": 5,
+    "dataPerTree": 0.25,
+    "nodeName": "master",
+    "inputFile": "cleaned.csv",
+    "labelColumn": 0
+}

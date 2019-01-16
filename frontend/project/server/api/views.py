@@ -29,6 +29,7 @@ import multiprocessing
 from ..api import metas, utils
 from ..services import vas
 from ..services import actv_reg
+from ..services import dist_rf
 from ..services.defs import *
 
 api = Blueprint('api', __name__,)
@@ -667,7 +668,6 @@ def upload_classifier():
 ##  - Add APIs for new middleware services here
 ##  - However, all actual service code should be in the '../services' folder
 ##
-
 @api.route('/actv_reg/classify', methods=['POST'])
 def activity_reg_classify():
   return call_service(actv_reg.classify, request)
@@ -676,10 +676,21 @@ def activity_reg_classify():
 def activity_reg_train():
   return call_service(actv_reg.train, request)
 
+@api.route('/dist_rf/classify', methods=['POST'])
+def dist_rf_classify():
+  return call_service(dist_rf.classify, request)
+
+@api.route('/dist_rf/train', methods=['POST'])
+def dist_rf_train():
+  return call_service(dist_rf.train, request)
+
 @api.route('/vas/get_average_speeds', methods=['GET'])
 def get_average_speeds():
   return call_service(vas.get_average_speeds, request)
 
+##
+##  IFoT Middleware Service Management Utility Functions
+##
 def call_service(service_func, request):
   collect_start_time = utils.get_redis_server_time()
 

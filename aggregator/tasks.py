@@ -17,8 +17,8 @@ import datetime
 from dateutil import tz
 import redis
 import collections
+import csv
 import json
-
 #Aggregator
 
 NODE_COUNT = '_node_count'
@@ -305,6 +305,73 @@ def aggregate_average_speeds(unique_id):
         agg_result[rsu_id] = speed_info['speed'] / speed_info['count']
 
       d = { 'result': agg_result,
+            'unique_id': unique_id,
+            'done_task_count': done_task_count,
+            'node_task_id_list': node_task_id_list }
+
+      toc = time.clock()
+      job.meta['progress'] = toc - tic
+      job.save_meta()
+
+      # Log execution time info to redis
+      add_exec_time_info(unique_id, "aggregation", aggregation_start_time, get_redis_server_time())
+
+      return d
+
+def most_common(lst):
+  return max(set(lst), key=lst.count)
+
+def aggregate_decision_trees(unique_id):
+  aggregation_start_time = get_redis_server_time()
+  tic = time.clock()
+  job = get_current_job()
+  job.meta['handled_by'] = socket.gethostname()
+  job.meta['handled_time'] = int(time.time())
+
+  job.meta['progress'] = 0.0
+
+  redis_connection = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+
+  task_count = getRedisV(redis_connection, unique_id + TASK_COUNT)
+  done_task_count = getRedisV(redis_connection, unique_id + DONE_TASK_COUNT)
+  status = getRedisV(redis_connection, unique_id)
+  if status == "finished":
+    with Connection(redis.from_url(REDIS_URL)):
+      node_task_id_list = getListK(redis_connection, unique_id + TASK_SUFFIX)
+      # all_results = node_task_id_list
+      #TODO: Assuming the return of the processors are lists
+      all_results = []
+
+      #Checking sequence just in case, but costs another for loop
+      agg_result = {}
+      for task_id in node_task_id_list:
+        q = Queue('default')
+        task = q.fetch_job(task_id)
+
+        if task is not None:
+          sequence_ID = task.result["sequence_ID"]
+
+          output = task.result["output"]["aggregate_decision_trees"]
+
+          # j = json.loads(output)
+          # result = j['result']
+          result = output.replace(";", "\n")
+
+          buff = StringIO(result)
+          reader = csv.reader(buff)
+
+          labels = []
+          for line in reader:
+            label = line[0]
+            llist = line[1:]
+            ddict = {}
+            ddict[label] = most_common(llist)
+            labels.append(ddict)
+      # for rsu_id in agg_result.keys():
+      #   speed_info = agg_result[rsu_id]
+      #   agg_result[rsu_id] = speed_info['speed'] / speed_info['count']
+
+      d = { 'result': labels,
             'unique_id': unique_id,
             'done_task_count': done_task_count,
             'node_task_id_list': node_task_id_list }

@@ -10,7 +10,7 @@ version: '3'
 
 services:
   frontend:
-    image: nuc1:5000/frontend-ifot
+    image: nuc1:5000/nuc-ifot-frontend
     #image: ifot/frontend
     build:
       context: ./frontend
@@ -33,13 +33,14 @@ services:
       - FLASK_DEBUG=1
       - APP_SETTINGS=project.server.config.DevelopmentConfig
       - WTF_CSRF_ENABLED = False
+      - PYTHONUNBUFFERED=1
     depends_on:
       - redis
 
   #Backend simply just running redis rq worker
   #needs task files to be deployed in all workers
   backend:
-    image: nuc1:5000/worker-ifot
+    image: nuc1:5000/nuc-ifot-worker
     #image: ifot/backend
     build:
       context: ./backend
@@ -61,9 +62,11 @@ services:
       replicas: 3
       restart_policy:
         condition: any
+    environment:
+      - PYTHONUNBUFFERED=1
 
   aggregator:
-    image: nuc1:5000/worker-ifot
+    image: nuc1:5000/nuc-ifot-worker
     ports:
       - "5003:5003"
     command: python3 worker.py
@@ -78,7 +81,7 @@ services:
 
   redis:
     container_name: redis
-    image: nuc1:5000/arm-redis
+    image: redis
     ports:
       - "6379:6379"
     restart: always
@@ -88,20 +91,22 @@ services:
           - node.role == manager
       restart_policy:
         condition: any
+    logging:
+      driver: "none"
     # command: ["redis-server", "--appendonly", "yes"]
     # hostname: redis
 
   redis_dashboard:
     build: ./redis_dashboard
     #image: ifot/r_dashboard
-    image: nuc1:5000/dashboard-ifot
+    image: nuc1:5000/nuc-ifot-dashboard
     container_name: redis_dashboard
     ports:
       - "9181:9181"
     command: rq-dashboard -H redis
 
   viz:
-    image: alexellis2/visualizer-arm:latest
+    image: dockersamples/visualizer
     ports:
       - "8080:8080"
     deploy:
