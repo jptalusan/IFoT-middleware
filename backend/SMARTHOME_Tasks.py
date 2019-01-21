@@ -42,13 +42,27 @@ def add_exec_time_info(unique_id, operation, time_start, time_end):
   return True
 
 
-def train_classifier(label_data, number_of_trees, feature_data):
+def train_classifier(unique_id, sequence_id, labels, label_data, number_of_trees, feature_data):
+  process_start_time = get_redis_server_time()
+  tic = time.perf_counter()
+  job = rq.get_current_job()
+
+  # # Notify queue of job pick up
+  job.meta['handled_by'] = socket.gethostname()
+  job.meta['handled_time'] = int(time.time())
+  job.save_meta()
+
+  redis_conn = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
+
+  job = rq.get_current_job()
+  NUTS_Funcs.appendToListK(redis_conn, unique_id + Defs.TASK_SUFFIX, job.id )
+
   # if len(label) > 1:
   label_sampled = pd.read_csv(StringIO(label_data))
   df_Xtrans = pd.read_csv(StringIO(feature_data))
 
-  label_list = [ "Bathing","ReadingBook","UsingSmartphone","WorkingOnPC","CleaningRoom","CleaningBathroom","PlayingGame","WashingDishes","Eating","Sleeping","StayingAtHome","Dressing","WatchingTelevision","Laundry","PersonalHygiene","UsingToilet","Cooking" ]
-  for label in label_list:
+  #label_list = [ "Bathing","ReadingBook","UsingSmartphone","WorkingOnPC","CleaningRoom","CleaningBathroom","PlayingGame","WashingDishes","Eating","Sleeping","StayingAtHome","Dressing","WatchingTelevision","Laundry","PersonalHygiene","UsingToilet","Cooking" ]
+  for label in labels:
     label_sample = label_sampled[label].values
     df_label_sample = pd.DataFrame(label_sample, columns = ['label'])
     df_new = pd.concat([df_label_sample, df_Xtrans], axis=1, join_axes=[df_Xtrans.index]).fillna(0)
@@ -60,7 +74,32 @@ def train_classifier(label_data, number_of_trees, feature_data):
     # output = popen.stdout.read()
     # print(output)
 
-  return { 'result': 'success' }
+  # Update job progress
+  toc = time.perf_counter()
+  job.meta['progress'] = toc - tic
+  job.save_meta()
+
+  redis_conn.incr(unique_id + Defs.DONE_TASK_COUNT)
+  task_count      = NUTS_Funcs.getRedisV(redis_conn, unique_id + Defs.TASK_COUNT)
+  done_task_count = NUTS_Funcs.getRedisV(redis_conn, unique_id + Defs.DONE_TASK_COUNT)
+
+  metas = {
+    'unique_id' : unique_id,
+    'task_count' : task_count,
+    'done_task_count' : done_task_count,
+  }
+
+  # if task_count == done_task_count:
+  #   NUTS_Funcs.setRedisKV(redis_conn, unique_id, "finished")
+  #   with Connection(redis_conn):
+  #     #Maybe add a differnetname?
+  #     q = Queue('aggregator')
+  #     t = q.enqueue('tasks.aggregate_decision_trees', unique_id, depends_on=job.id) #job is this current job
+  #     metas['agg_task_id'] = t.id
+
+  add_exec_time_info(unique_id, "processing-{}".format(sequence_id), process_start_time, get_redis_server_time())
+
+  return { 'sequence_ID': sequence_id, 'metas' : metas, 'output': 'success', 'outsize': 0}
 
 def classify_data(unique_id, sequence_id, label, input_csv_data):
   process_start_time = get_redis_server_time()

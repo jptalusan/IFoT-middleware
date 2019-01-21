@@ -1,0 +1,142 @@
+[
+    {
+        "ID": "pubnyjlbol8ya1ju41mr79usj",
+        "Version": {
+            "Index": 5058
+        },
+        "CreatedAt": "2019-01-16T20:08:58.719831424Z",
+        "UpdatedAt": "2019-01-16T20:08:58.721921673Z",
+        "Spec": {
+            "Name": "flask-ifot-jane_frontend",
+            "Labels": {
+                "com.docker.stack.image": "nuc1:5000/nuc-ifot-frontend",
+                "com.docker.stack.namespace": "flask-ifot-jane"
+            },
+            "TaskTemplate": {
+                "ContainerSpec": {
+                    "Image": "nuc1:5000/nuc-ifot-frontend:latest@sha256:d1629322f9e1843957c111ab4ad5c5ea71bb578006713e5e9ef67d9b20e8ac6f",
+                    "Labels": {
+                        "com.docker.stack.namespace": "flask-ifot-jane"
+                    },
+                    "Args": [
+                        "python",
+                        "manage.py",
+                        "run",
+                        "-h",
+                        "0.0.0.0",
+                        "-p",
+                        "5001"
+                    ],
+                    "Env": [
+                        "APP_SETTINGS=project.server.config.DevelopmentConfig",
+                        "FLASK_DEBUG=1",
+                        "PYTHONUNBUFFERED=1",
+                        "WTF_CSRF_ENABLED = False"
+                    ],
+                    "Privileges": {
+                        "CredentialSpec": null,
+                        "SELinuxContext": null
+                    },
+                    "Mounts": [
+                        {
+                            "Type": "bind",
+                            "Source": "/home/jp-nuc/jane/IFoT-middleware/frontend",
+                            "Target": "/usr/src/app"
+                        }
+                    ],
+                    "StopGracePeriod": 10000000000,
+                    "DNSConfig": {},
+                    "Isolation": "default"
+                },
+                "Resources": {},
+                "RestartPolicy": {
+                    "Condition": "any",
+                    "Delay": 5000000000,
+                    "MaxAttempts": 0
+                },
+                "Placement": {
+                    "Constraints": [
+                        "node.role == manager"
+                    ],
+                    "Platforms": [
+                        {
+                            "Architecture": "amd64",
+                            "OS": "linux"
+                        }
+                    ]
+                },
+                "Networks": [
+                    {
+                        "Target": "poxhh0cntjrx17bnmzemqeo5o",
+                        "Aliases": [
+                            "frontend"
+                        ]
+                    }
+                ],
+                "ForceUpdate": 0,
+                "Runtime": "container"
+            },
+            "Mode": {
+                "Replicated": {
+                    "Replicas": 1
+                }
+            },
+            "UpdateConfig": {
+                "Parallelism": 1,
+                "FailureAction": "pause",
+                "Monitor": 5000000000,
+                "MaxFailureRatio": 0,
+                "Order": "stop-first"
+            },
+            "RollbackConfig": {
+                "Parallelism": 1,
+                "FailureAction": "pause",
+                "Monitor": 5000000000,
+                "MaxFailureRatio": 0,
+                "Order": "stop-first"
+            },
+            "EndpointSpec": {
+                "Mode": "vip",
+                "Ports": [
+                    {
+                        "Protocol": "tcp",
+                        "TargetPort": 5001,
+                        "PublishedPort": 5001,
+                        "PublishMode": "ingress"
+                    }
+                ]
+            }
+        },
+        "Endpoint": {
+            "Spec": {
+                "Mode": "vip",
+                "Ports": [
+                    {
+                        "Protocol": "tcp",
+                        "TargetPort": 5001,
+                        "PublishedPort": 5001,
+                        "PublishMode": "ingress"
+                    }
+                ]
+            },
+            "Ports": [
+                {
+                    "Protocol": "tcp",
+                    "TargetPort": 5001,
+                    "PublishedPort": 5001,
+                    "PublishMode": "ingress"
+                }
+            ],
+            "VirtualIPs": [
+                {
+                    "NetworkID": "q34pzq5mxiy0ocg62cddwnfgh",
+                    "Addr": "10.255.1.184/16"
+                },
+                {
+                    "NetworkID": "poxhh0cntjrx17bnmzemqeo5o",
+                    "Addr": "10.0.9.8/24"
+                }
+            ]
+        }
+    }
+]

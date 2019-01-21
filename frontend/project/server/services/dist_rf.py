@@ -24,11 +24,13 @@ def classify(request):
   tic = tm.perf_counter()
 
   # Load the parameters
+  subtask_start_time = utils.get_redis_server_time()
   req = request.get_json(force=True)
   influx_ip   = req['influx_ip']
   start_time  = datetime.datetime.fromtimestamp(int(req['start_time']))
   end_time    = datetime.datetime.fromtimestamp(int(req['end_time']))
-  node_count = int(req['node_count'])
+  node_count  = int(req['node_count'])
+  duration    = req['duration']
 
   # Obtain a unique ID
   unique_id = utils.initialize_query(node_count, count_suffix=TASK_COUNT, done_count_suffix=DONE_TASK_COUNT)
@@ -46,7 +48,11 @@ def classify(request):
                   ssl=True,
                   verify_ssl=True)
 
-  duration = "1h"
+  # Log end of collection startup
+  metas.add_exec_time_info(unique_id, "collection/startup",
+                            subtask_start_time,
+                            utils.get_redis_server_time())
+
   label = lynx.label(fmtd_start_time, fmtd_end_time)
   label_sampled = pd.DataFrame(data=label)
   label_sampled = label_sampled.resample(duration).fillna(method="ffill")
@@ -54,13 +60,31 @@ def classify(request):
   label_sampled = label_sampled.drop(label_sampled.index[0])
 
   # Load data from Lynx (!! Warning: This will be slow !!)
+  print("Retrieving positioning data...", end='')
   pos = lynx.positioning(fmtd_start_time, fmtd_end_time, duration)
+  print("done.")
+
+  print("Retrieving door data...", end='')
   door = lynx.enocean_door(fmtd_start_time, fmtd_end_time,duration)
+  print("done.")
+
+  print("Retrieving motion data...", end='')
   motion = lynx.enocean_motion(fmtd_start_time, fmtd_end_time, duration)
+  print("done.")
+
+  print("Retrieving operation status...", end='')
   opration_status = lynx.echonet_operation_status(fmtd_start_time, fmtd_end_time, duration)
+  print("done.")
+
+  print("Retrieving power data...", end='')
   watt = lynx.echonet_power_distribution_board_metering(fmtd_start_time, fmtd_end_time, duration)
+  print("done.")
+  metas.add_exec_time_info(unique_id, "collection/data-download",
+                            subtask_start_time,
+                            utils.get_redis_server_time())
 
   # Consolidate the data
+  subtask_start_time = utils.get_redis_server_time()
   time = pd.DataFrame(data={"time": label_sampled.index.to_perioddelta('10s').seconds},
                       index=label_sampled.index)
   df = pd.concat([label_sampled, pos, motion, door, opration_status, watt, time],
@@ -75,12 +99,20 @@ def classify(request):
   # Apply the scaler
   scaler = MinMaxScaler()       # TODO Save for later
   X_scaled = scaler.fit_transform(X)
+  metas.add_exec_time_info(unique_id, "collection/data-preprocessing",
+                            subtask_start_time,
+                            utils.get_redis_server_time())
 
   # Apply PCA
+  subtask_start_time = utils.get_redis_server_time()
   pca = PCA(n_components=0.95)  # TODO Save for later!
   X_trans = pca.fit_transform(X_scaled)
+  metas.add_exec_time_info(unique_id, "collection/data-pca",
+                            subtask_start_time,
+                            utils.get_redis_server_time())
 
   # Save as CSV
+  subtask_start_time = utils.get_redis_server_time()
   csv_data = pd.DataFrame(X_trans).to_csv(header=False, index=False)
 
   # TODO Classify with the backend, launching up to N instances
@@ -105,6 +137,10 @@ def classify(request):
 
   for p in processes:
     p.join()
+
+  metas.add_exec_time_info(unique_id, "collection/distribution",
+                            subtask_start_time,
+                            utils.get_redis_server_time())
 
   # TODO Obtain the task ids so that we can return them
   toc = tm.perf_counter()
@@ -134,14 +170,16 @@ def classify(request):
 def train(request):
   tic = tm.perf_counter()
 
-  collect_prepare_start_time = utils.get_redis_server_time()
   # Load the parameters
+  subtask_start_time = utils.get_redis_server_time()
   req = request.get_json(force=True)
   influx_ip   = req['influx_ip']
   start_time  = datetime.datetime.fromtimestamp(int(req['start_time']))
   end_time    = datetime.datetime.fromtimestamp(int(req['end_time']))
-  node_count = int(req['node_count'])
-  tree_count = int(req['tree_count'])
+  node_count  = int(req['node_count'])
+  tree_count  = int(req['tree_count'])
+  print(req.keys())
+  duration    = req['duration']
 
   # Obtain a unique ID
   unique_id = utils.initialize_query(node_count, count_suffix=TASK_COUNT, done_count_suffix=DONE_TASK_COUNT)
@@ -149,12 +187,6 @@ def train(request):
   # Convert times to the required format
   fmtd_start_time = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
   fmtd_end_time = end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-  duration = "1h"
-
-  # Log end of collection preparations
-  metas.add_exec_time_info(unique_id, "collection/preparations",
-                            collect_prepare_start_time,
-                            utils.get_redis_server_time())
 
   lynx = LynxClient(host='ubi-lynx-db.naist.jp',
                   port=443,
@@ -164,8 +196,13 @@ def train(request):
                   ssl=True,
                   verify_ssl=True)
 
+  # Log end of collection startup
+  metas.add_exec_time_info(unique_id, "collection/startup",
+                            subtask_start_time,
+                            utils.get_redis_server_time())
+
   # Load data from Lynx (!! Warning: This will be slow !!)
-  tic1 = tm.perf_counter()
+  subtask_start_time = utils.get_redis_server_time()
   print("Retrieving labels...", end='')
   label = lynx.label(fmtd_start_time, fmtd_end_time)
   print("done.")
@@ -189,16 +226,18 @@ def train(request):
   print("Retrieving power data...", end='')
   watt = lynx.echonet_power_distribution_board_metering(fmtd_start_time, fmtd_end_time, duration)
   print("done.")
-  toc1 = tm.perf_counter()
-  print("Operation Time: {} secs".format(int(toc1 - tic1)))
 
   # Load label data from Lynx
   label_sampled = pd.DataFrame(data=label)
   label_sampled = label_sampled.resample(duration).fillna(method="ffill")
   label_sampled = label_sampled.fillna(0)
   label_sampled = label_sampled.drop(label_sampled.index[0])
+  metas.add_exec_time_info(unique_id, "collection/data-download",
+                            subtask_start_time,
+                            utils.get_redis_server_time())
 
   # Consolidate the data
+  subtask_start_time = utils.get_redis_server_time()
   time = pd.DataFrame(data={"time": label_sampled.index.to_perioddelta(duration).seconds},
                       index=label_sampled.index)
   df = pd.concat([label_sampled, pos, motion, door, opration_status, watt, time],
@@ -207,17 +246,26 @@ def train(request):
 
   # Obtain the label list
   label_list = lynx.label_list()
+  label_list = label_sampled.columns.tolist()[1:]
   X = df.drop(np.append(label_list, "user"), axis=1).values
 
   # Apply the scaler
   scaler = MinMaxScaler()       # TODO Save for later
   X_scaled = scaler.fit_transform(X)
+  metas.add_exec_time_info(unique_id, "collection/data-preprocessing",
+                            subtask_start_time,
+                            utils.get_redis_server_time())
 
   # Apply PCA
+  subtask_start_time = utils.get_redis_server_time()
   pca = PCA(n_components=0.95)  # TODO Save for later!
   X_trans = pca.fit_transform(X_scaled)
+  metas.add_exec_time_info(unique_id, "collection/data-pca",
+                            subtask_start_time,
+                            utils.get_redis_server_time())
 
   # Save as CSV
+  subtask_start_time = utils.get_redis_server_time()
   csv_label_data = label_sampled.to_csv()
   csv_data = pd.DataFrame(X_trans).to_csv()
 
@@ -229,7 +277,7 @@ def train(request):
   processes = []
   for i in range(0, node_count):
     p = multiprocessing.Process(target=enqueue_train_task,
-                                args=(mpq, unique_id, seq_id, csv_label_data, tree_count, csv_data))
+                                args=(mpq, unique_id, seq_id, label_list, csv_label_data, tree_count, csv_data))
 
     processes.append(p)
     p.start()
@@ -243,6 +291,10 @@ def train(request):
 
   for p in processes:
     p.join()
+
+  metas.add_exec_time_info(unique_id, "collection/distribution",
+                            subtask_start_time,
+                            utils.get_redis_server_time())
 
   toc = tm.perf_counter()
 
@@ -271,12 +323,12 @@ def train(request):
 #########################
 #   Utility Functions   #
 #########################
-def enqueue_train_task(queue, unique_id, seq_id, label_data, tree_count, csv_data):
+def enqueue_train_task(queue, unique_id, seq_id, labels, label_data, tree_count, csv_data):
   with Connection(redis.from_url(current_app.config['REDIS_URL'])):
     q = Queue('default')
 
     #task = q.enqueue('DistRF_Tasks.train_classifier', unique_id, seq_id, tree_count, csv_data)
-    task = q.enqueue('SMARTHOME_Tasks.train_classifier', label_data, tree_count, csv_data)
+    task = q.enqueue('SMARTHOME_Tasks.train_classifier', unique_id, seq_id, labels, label_data, tree_count, csv_data)
 
   queue.put(task.get_id())
   return

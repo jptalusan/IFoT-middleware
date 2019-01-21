@@ -17,18 +17,21 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5001:5001"
+    expose:
+      - "5001"
     command: python manage.py run -h 0.0.0.0 -p 5001
     volumes:
-      - ./frontend:/usr/src/app
+      - /home/jp-nuc/jane/IFoT-middleware/frontend:/usr/src/app
+      #- ./frontend:/usr/src/app
     deploy:
       placement:
         constraints:
           - node.role == manager
-      restart_policy:
-        condition: any
-        delay: 5s
-        window: 10s
-        max_attempts: 5
+      # restart_policy:
+      #   condition: any
+      #   delay: 5s
+      #   window: 10s
+      #   max_attempts: 5
     environment:
       - FLASK_DEBUG=1
       - APP_SETTINGS=project.server.config.DevelopmentConfig
@@ -39,18 +42,18 @@ services:
 
   #Backend simply just running redis rq worker
   #needs task files to be deployed in all workers
-  backend:
+  backend1:
     image: nuc1:5000/nuc-ifot-worker
     #image: ifot/backend
     build:
-      context: ./backend
+      context: ./backend1
       dockerfile: Dockerfile
     ports:
-      - "5002:5002"
+      - "5008:5008"
     #command: rq worker -u redis://redis:6379
     command: python3 worker.py
     volumes:
-      - ./backend:/usr/src/app
+      - ./backend1:/usr/src/app
     #restart: always
     depends_on:
       - redis
@@ -59,7 +62,59 @@ services:
         constraints:
           - node.role == worker
       mode: replicated
-      replicas: 3
+      replicas: 1
+      restart_policy:
+        condition: any
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  backend2:
+    image: nuc1:5000/nuc-ifot-worker
+    #image: ifot/backend
+    build:
+      context: ./backend2
+      dockerfile: Dockerfile
+    ports:
+      - "5009:5009"
+    #command: rq worker -u redis://redis:6379
+    command: python3 worker.py
+    volumes:
+      - ./backend2:/usr/src/app
+    #restart: always
+    depends_on:
+      - redis
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  backend3:
+    image: nuc1:5000/nuc-ifot-worker
+    #image: ifot/backend
+    build:
+      context: ./backend3
+      dockerfile: Dockerfile
+    ports:
+      - "5010:5010"
+    #command: rq worker -u redis://redis:6379
+    command: python3 worker.py
+    volumes:
+      - ./backend3:/usr/src/app
+    #restart: always
+    depends_on:
+      - redis
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker
+      mode: replicated
+      replicas: 1
       restart_policy:
         condition: any
     environment:
