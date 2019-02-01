@@ -7,13 +7,15 @@ flask-wtf
 #For redis queue
 redis
 rq
+paho-mqtt
 
 #For database
 flask-sqlalchemy
 flask-migrate
 
 requests
-beautifulsoup4
+# beautifulsoup4
+bs4
 
 Pillow
 cairosvg

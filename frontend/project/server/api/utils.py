@@ -3,16 +3,27 @@ import datetime
 import requests
 from dateutil import tz
 
-from ..main import funcs
 from ..services.defs import *
+from ...common import utils as utils_common
+
+from math import sin, cos, sqrt, atan2, radians
+
+def distance_between_two_points(point1, point2):
+    R = 6373.0
+    dlon = point2[1] - point1[1]
+    dlat = point2[0] - point1[0]
+
+    a = sin(dlat / 2)**2 + cos(point1[0]) * cos(point2[0]) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    distance = R * c
+    return distance
 
 def initialize_query(total, count_suffix=NODE_COUNT, done_count_suffix=DONE_NODE_COUNT):
   r = redis.StrictRedis(host="redis", port=6379, password="", decode_responses=True)
 
-  unique_id = funcs.generate_unique_ID()
-  funcs.setRedisKV(r, unique_id, 'ongoing')
-  funcs.setRedisKV(r, unique_id + count_suffix, total)
-  funcs.setRedisKV(r, unique_id + done_count_suffix, 0)
+  unique_id = utils_common.generate_unique_ID()
+  utils_common.setRedisKV(r, unique_id, 'ongoing')
 
   return unique_id
 

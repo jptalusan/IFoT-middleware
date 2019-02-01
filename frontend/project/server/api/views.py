@@ -11,11 +11,10 @@ import json
 import urllib.request
 import requests
 
-from bs4 import BeautifulSoup
+# from bs4 import BeautifulSoup
 
 from ..forms.upload_form import TextForm, Nuts2Form
 
-from ..main import funcs
 import numpy as np
 
 import os
@@ -30,7 +29,14 @@ from ..api import metas, utils
 from ..services import vas
 from ..services import actv_reg
 from ..services import dist_rf
-from ..services.defs import *
+# from ..services.defs import *
+
+from ...common.mqtt_utils import MqttLog
+from ...common.defs import *
+
+import random
+from influxdb import DataFrameClient
+from math import radians
 
 api = Blueprint('api', __name__,)
 
@@ -663,6 +669,32 @@ def upload_classifier():
 
   return "Failed", 404
 
+@api.route('/get_distance', methods=['POST'])
+def get_distance():
+    client = DataFrameClient('163.221.68.206', 8086, "rsu_locations")
+    result = client.query('select * from "rsu_id_location"."autogen"."rsu_locations";')
+    df = result['rsu_locations']
+    
+    list_of_rsus = request.json['rsu_list']
+    aggregator_node = random.choice(list_of_rsus)
+    agg_row = df.loc[df['rsu-id'] == aggregator_node]
+    agg_lat = radians(float(agg_row['lat'].values[0]))
+    agg_lon = radians(float(agg_row['lon'].values[0]))
+    agg_point1 = np.asarray([agg_lat, agg_lon])
+    response = {}
+    distances = []
+    for rsu in list_of_rsus:
+        row = df.loc[df['rsu-id'] == rsu]
+        lat = radians(float(row['lat'].values[0]))
+        lon = radians(float(row['lon'].values[0]))
+        point2 = np.asarray([lat, lon])
+        distance = utils.distance_between_two_points(agg_point1, point2)
+        rsu_distance = {}
+        rsu_distance[rsu] = distance
+        distances.append(rsu_distance)
+    response['distances'] = distances
+    response['agg_node'] = aggregator_node
+    return jsonify(response)
 ##
 ##  IFoT Middleware Service APIs
 ##  - Add APIs for new middleware services here
@@ -688,17 +720,27 @@ def dist_rf_train():
 def get_average_speeds():
   return call_service(vas.get_average_speeds, request)
 
+@api.route('/vas/request_rsu_list', methods=['GET'])
+def request_rsu_list():
+  return jsonify(vas.get_rsu_list())
+
 ##
 ##  IFoT Middleware Service Management Utility Functions
 ##
-def call_service(service_func, request):
-  collect_start_time = utils.get_redis_server_time()
+def call_service(service_func, request, split_count=1):
+  # # Log the collect start time
+  # collect_start_time = utils.get_redis_server_time()
 
+  # Execute the request
   api_resp = service_func(request)
 
   # Log execution time info to redis
-  unique_id = api_resp['response_object']['unique_ID']
-  metas.add_exec_time_info(unique_id, "collection", collect_start_time, utils.get_redis_server_time())
+  # collect_end_time = utils.get_redis_server_time()
+
+  # unique_id = api_resp['response_object']['unique_ID']
+  # log = MqttLog("SVW-001", unique_id)
+  # log.exec_time('collection', collect_start_time, collect_end_time)
+  # metas.add_exec_time_info(unique_id, "collection", collect_start_time, collect_end_time)
 
   return jsonify(api_resp), 202
 

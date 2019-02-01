@@ -1,3 +1,5 @@
 redis
 rq
 scikit-learn[alldeps]
+paho-mqtt
+

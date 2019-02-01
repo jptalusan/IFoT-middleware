@@ -20,7 +20,7 @@ from ..api import utils, metas
 from ..services.defs import *
 from ..main.lynx.influxdb.client import LynxClient
 
-def classify(request):
+def classify(request, unique_id=None):
   tic = tm.perf_counter()
 
   # Load the parameters
@@ -32,8 +32,9 @@ def classify(request):
   node_count  = int(req['node_count'])
   duration    = req['duration']
 
-  # Obtain a unique ID
-  unique_id = utils.initialize_query(node_count, count_suffix=TASK_COUNT, done_count_suffix=DONE_TASK_COUNT)
+  # Obtain a unique ID if not yet assigned
+  if unique_id == None:
+      unique_id = utils.initialize_query(split_count, count_suffix=TASK_COUNT, done_count_suffix=DONE_TASK_COUNT)
 
   # Convert times to the required format
   fmtd_start_time = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -167,7 +168,7 @@ def classify(request):
   return response
 
 
-def train(request):
+def train(request, unique_id=None):
   tic = tm.perf_counter()
 
   # Load the parameters
@@ -181,8 +182,9 @@ def train(request):
   print(req.keys())
   duration    = req['duration']
 
-  # Obtain a unique ID
-  unique_id = utils.initialize_query(node_count, count_suffix=TASK_COUNT, done_count_suffix=DONE_TASK_COUNT)
+  # Obtain a unique ID if not yet assigned
+  if unique_id == None:
+      unique_id = utils.initialize_query(split_count, count_suffix=TASK_COUNT, done_count_suffix=DONE_TASK_COUNT)
 
   # Convert times to the required format
   fmtd_start_time = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")

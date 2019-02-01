@@ -4,7 +4,7 @@ import redis
 from rq import Queue, Connection
 from rq.registry import StartedJobRegistry, FinishedJobRegistry
 
-from ..services.defs import *
+from ...common.defs import *
 
 def get_task_status(queue, task_id, app_info):
   task = None

@@ -26,7 +26,7 @@ def enqueue_classify_task(queue, unique_id, seq_id, model, sensor_list, param_li
   return
 
 #TODO: Breakdown the time/duration and then send the unix times to the various nodes.
-def classify(request):
+def classify(request, unique_id=None):
   tic = time.perf_counter()
   req = request.get_json(force=True)
   influx_ip   = req['influx_ip']
@@ -37,8 +37,9 @@ def classify(request):
   end_time    = req['end_time']
   split_count = int(req['split_count'])
 
-  # Obtain a unique ID
-  unique_id = utils.initialize_query(split_count, count_suffix=TASK_COUNT, done_count_suffix=DONE_TASK_COUNT)
+  # Obtain a unique ID if not yet assigned
+  if unique_id == None:
+      unique_id = utils.initialize_query(split_count, count_suffix=TASK_COUNT, done_count_suffix=DONE_TASK_COUNT)
 
   # Retrieve the data to be classified from Influx DB
   if influx_ip == "" or influx_ip == "DEFAULT":
@@ -111,7 +112,7 @@ def classify(request):
 
   return response
 
-def train(request):
+def train(request, unique_id=None):
   tic = time.perf_counter()
   req = request.get_json(force=True)
   influx_ip   = req['influx_ip']
@@ -128,8 +129,9 @@ def train(request):
   if strategy == 'one_per_sensor':
     split_count = len(sensor_list)
 
-  # Obtain a unique ID
-  unique_id = utils.initialize_query(split_count, count_suffix=TASK_COUNT, done_count_suffix=DONE_TASK_COUNT)
+  # Obtain a unique ID if not yet assigned
+  if unique_id == None:
+      unique_id = utils.initialize_query(split_count, count_suffix=TASK_COUNT, done_count_suffix=DONE_TASK_COUNT)
 
   # Retrieve the data to be classified from Influx DB
   if influx_ip == "" or influx_ip == "DEFAULT":
